@@ -347,7 +347,7 @@ const LINEE = { S: 'SV', F: 'FILMATO', T: 'TAGLIO LISCIO' };
 const LINEE_OK = ['SV', 'FILMATO', 'TAGLIO LISCIO', 'PRETAGLIATO'];
 const TL = 'TAGLIO LISCIO';
 const FORMATI_FISSI = ['1KG', '2KG', '1/2', 'QUARTI', 'OTTAVI'];
-const normFormato = v => String(v ?? '').trim().toUpperCase().replace(/\s+/g, '');
+const normFormato = v => { const s = String(v ?? '').trim().toUpperCase().replace(/\s+/g, ''), m = /^(\d+)(G|GR|GRAMMI)?$/.exec(s); return m ? m[1] + 'G' : s; };   // 450 → 450G
 const grammi = f => { const m = /^(\d+)G$/.exec(f); return m ? +m[1] : null; };
 const formatoOk = f => grammi(f) != null || FORMATI_FISSI.includes(f);
 const PARAM_DEF = {
