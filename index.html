@@ -248,6 +248,7 @@ table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums
     <nav class="tabs" id="tabs"></nav>
     <div class="side-foot">
       <div id="demo-badge" class="demo-badge" hidden>Modalità prova: i dati restano solo in questo browser.</div>
+      <button id="btn-azzera" type="button" title="Toglie la selezione e la somma (anche con Esc)">Azzera selezione</button>
       <button id="btn-aggiorna" type="button">Aggiorna dati</button>
       <button id="btn-esci" type="button" hidden>Esci</button>
     </div>
@@ -595,6 +596,12 @@ function xlsxSemplice(fogli) {
 }
 // ====== Tabella di sola lettura: ordinamento, filtri stile Excel, selezione con somma, frecce, stampa, Excel ======
 const VUOTA = '(vuote)';
+const TABELLE = [];
+function azzeraSelezioni() {
+  chiudiSelezioneFoglio(); for (let i = TABELLE.length - 1; i >= 0; i--) { const T = TABELLE[i]; if (!document.body.contains(T.cont)) TABELLE.splice(i, 1); else T.azzeraSel(); }
+  nascondiSomma();
+  if (document.activeElement && document.activeElement.blur && document.activeElement.tagName !== 'INPUT') document.activeElement.blur();
+}
 function valTxt(c, v) {
   if (v == null || v === '' || (typeof v === 'number' && isNaN(v))) return '';
   if (c.t === 'kg') return fmtKg(v);
@@ -612,6 +619,8 @@ const confrontaVal = (c, a, b) => {
 function Tabella(cont, opt) {
   const T = { cols: opt.cols, rows: opt.rows || [], filtri: {}, ord: opt.ord || null, sel: null, vis: [] };
   const cols = T.cols;
+  TABELLE.push(T); T.cont = cont;
+  T.azzeraSel = () => { T.sel = null; if (T.tab && document.body.contains(T.tab)) selDisegna(); };
   const fire = () => { if (opt.onChange) opt.onChange(T); };
 
   T.filtrate = (escludi) => T.rows.filter(r => cols.every(c => {
@@ -788,7 +797,7 @@ const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghos
 const CUR = { tipo: null, data: null, righe: [], altre: 0, dirty: false, esiste: false };
 const V = { lavaggi: 'giorno', lavorazioni: 'giorno' };        // vista: giorno | elenco
 const MESE_SEL = { lavaggi: meseKey(isoOggi()), lavorazioni: meseKey(isoOggi()) };
-const DATA_SEL = { lavaggi: isoOggi(), lavorazioni: isoOggi() };
+const DATA_SEL = { lavaggi: '', lavorazioni: '' };          // all'inizio la data è vuota
 
 const TIPI = {
   lavaggi: { tab: 'dp_lavaggi', nome: 'Lavaggi', vuota: () => ({ lotto: '', matr: '', mese: '', anno: '', forme: '', sporco: '' }) },
@@ -1274,24 +1283,25 @@ async function pgGiorno(tipo) {
         <button class="btn amber" id="g-salva">Salva giornata</button></div>
       <div id="foglio"></div>`;
     eventiFoglio($('foglio'));
-    const vai = async s => { const d = parseData(s, +DATA_SEL[tipo].slice(0, 4)); if (!d) { toast('Data non valida', true); $('g-data-txt').value = isoToIt(CUR.data || DATA_SEL[tipo]); return; } await vaiGiorno(tipo, d); };
+    const vai = async s => { if (!String(s).trim()) return; const d = parseData(s, +(DATA_SEL[tipo] || isoOggi()).slice(0, 4)); if (!d) { toast('Data non valida', true); $('g-data-txt').value = isoToIt(CUR.data || DATA_SEL[tipo]); return; } await vaiGiorno(tipo, d); };
     $('g-data-txt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('g-data-txt').addEventListener('change', e => vai(e.target.value));
-    $('g-cal').onclick = () => { const d = $('g-data'); d.value = CUR.data || DATA_SEL[tipo]; d.showPicker ? d.showPicker() : d.click(); };
+    $('g-cal').onclick = () => { const d = $('g-data'); d.value = CUR.data || DATA_SEL[tipo] || isoOggi(); d.showPicker ? d.showPicker() : d.click(); };
     $('g-data').onchange = e => { if (e.target.value) vaiGiorno(tipo, e.target.value); };
-    const shift = n => { const d = new Date(CUR.data + 'T12:00:00'); d.setDate(d.getDate() + n); vaiGiorno(tipo, d.toISOString().slice(0, 10)); };
+    const shift = n => { if (!CUR.data) return; const d = new Date(CUR.data + 'T12:00:00'); d.setDate(d.getDate() + n); vaiGiorno(tipo, d.toISOString().slice(0, 10)); };
     $('g-prev').onclick = () => shift(-1); $('g-next').onclick = () => shift(1);
-    $('g-salva').onclick = salvaGiornata;
+    $('g-salva').onclick = () => CUR.data ? salvaGiornata() : toast('Scrivi prima la data', true);
     if ($('g-altre')) { $('g-altre').onchange = e => { const n = parseNum(e.target.value); CUR.altre = n && !isNaN(n) ? Math.round(n) : 0; e.target.value = CUR.altre || ''; segnaModifica(); }; }
     $('g-elimina').onclick = async () => {
-      if (!CUR.esiste && !CUR.righe.some(r => !rigaVuota(r))) return;
+      if (!CUR.data || (!CUR.esiste && !CUR.righe.some(r => !rigaVuota(r)))) return;
       if (!await chiedi('Elimina giornata', `Eliminare tutte le righe del ${isoToIt(CUR.data)}?`, 'Elimina', 'Annulla', true)) return;
       CUR.righe = []; CUR.altre = 0; await salvaGiornata(); await apriGiorno(tipo, CUR.data);
     };
     const T = () => { const cols = tipoColonna(colsElenco(tipo)).filter(c => c.k !== 'data'); const mappa = new Map([[CUR.data, { dati: CUR.righe.filter(r => !rigaVuota(r)), altre: 0 }]]); return { cols, vis: righeElenco(tipo, mappa), totali(v) { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } }; };
-    $('g-stampa').onclick = () => { const t = T(); stampaTabella(t, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, `Giornata del ${isoToIt(CUR.data)}`, 'landscape'); };
-    $('g-xlsx').onclick = () => esportaTabella(T(), `${TIPI[tipo].nome}_${S.prod}_${CUR.data}`, TIPI[tipo].nome);
-    await apriGiorno(tipo, DATA_SEL[tipo]);
+    $('g-stampa').onclick = () => { if (!CUR.data) return; const t = T(); stampaTabella(t, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, `Giornata del ${isoToIt(CUR.data)}`, 'landscape'); };
+    $('g-xlsx').onclick = () => CUR.data && esportaTabella(T(), `${TIPI[tipo].nome}_${S.prod}_${CUR.data}`, TIPI[tipo].nome);
+    if (DATA_SEL[tipo]) await apriGiorno(tipo, DATA_SEL[tipo]);
+    else { CUR.tipo = tipo; CUR.data = null; CUR.righe = []; $('foglio').innerHTML = '<div class="empty">Scrivi la data (per esempio 181126 oppure 18/11/2026) e premi Invio.</div>'; $('g-data-txt').focus(); }
   } else {
     $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
     const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
@@ -1309,14 +1319,16 @@ async function mesiIntervallo(tab, da, a) {                       // carica tutt
   return out;
 }
 const INTERVALLO = { polpa: null, prelievo: null, as400: null };
+const VUOTO_INT = { da: '', a: '' };           // all'inizio le date sono vuote
 function barraIntervallo(id, def) {
   const i = INTERVALLO[id] || (INTERVALLO[id] = { da: def.da, a: def.a });
   return `<div class="formrow"><label>Dal<input type="text" id="${id}-da" value="${isoToIt(i.da)}" style="width:110px" inputmode="numeric"></label><label>Al<input type="text" id="${id}-a" value="${isoToIt(i.a)}" style="width:110px" inputmode="numeric"></label>
     <button class="btn ghost sm" id="${id}-mese">Mese corrente</button><button class="btn ghost sm" id="${id}-oggi">Solo oggi</button>${barraExport(id + '-x')}</div>`;
 }
 function leggiIntervallo(id) {
-  const i = INTERVALLO[id], da = parseData($(id + '-da').value, +i.da.slice(0, 4)), a = parseData($(id + '-a').value, +i.a.slice(0, 4));
-  if (!da || !a) { toast('Date non valide', true); return false; }
+  const i = INTERVALLO[id], t1 = $(id + '-da').value.trim(), t2 = $(id + '-a').value.trim(); if (!t1 && !t2) return false;
+  const anno = +(i.da || isoOggi()).slice(0, 4), da = parseData(t1 || t2, anno), a = parseData(t2 || t1, anno);
+  if (!da || !a) { toast('Date non valide (scrivi per esempio 181126)', true); return false; }
   i.da = da <= a ? da : a; i.a = da <= a ? a : da; return true;
 }
 const meseCorrenteInt = () => { const mk = meseKey(isoOggi()); return { da: mk + '-01', a: fineMese(mk) }; };
@@ -1324,10 +1336,10 @@ const meseCorrenteInt = () => { const mk = meseKey(isoOggi()); return { da: mk +
 // ---------- Polpa: riga per riga ----------
 async function pgPolpa() {
   const gp = S.prod === 'GP', main = $('main');
-  main.innerHTML = `<div class="page-title"><h2>Polpa · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('polpa', meseCorrenteInt())}<div id="polpa-corpo"></div>`;
+  main.innerHTML = `<div class="page-title"><h2>Polpa · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('polpa', VUOTO_INT)}<div id="polpa-corpo"></div>`;
   let T = null;
   const carica = async () => {
-    if (!leggiIntervallo('polpa')) return; const i = INTERVALLO.polpa;
+    if (!leggiIntervallo('polpa')) { $('polpa-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 181126) oppure scegli «Mese corrente».</div>'; return; } const i = INTERVALLO.polpa;
     const mappa = await mesiIntervallo('dp_giornate', i.da, i.a), rows = [];
     [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => { const c = calcLavorazione(S.prod, d, r); rows.push({ n: r.n, lotto: r.lotto, data: d, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), fmt: r.fmt, linea: r.linea, polpa: vuoto(r.polpa) ? null : num(r.polpa), q: c.q, ab: c.ab }); }));
     const cols = [{ k: 'n', l: 'Num. riga', w: 70, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'matr', l: 'Matricola', w: 80 }, { k: 'mese', l: 'Mese', w: 48, al: 'c' }, { k: 'anno', l: 'Anno', w: 56 },
@@ -1346,10 +1358,10 @@ async function pgPolpa() {
 // ---------- Prelievo magazzino (forme lavate per giorno, con Carpi/Cerea) ----------
 async function pgPrelievo() {
   const main = $('main'), altri = S.prod === 'PR' ? 'CARPI' : 'CEREA';
-  main.innerHTML = `<div class="page-title"><h2>Prelievo magazzino · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('prelievo', meseCorrenteInt())}<div id="prel-corpo"></div>`;
+  main.innerHTML = `<div class="page-title"><h2>Prelievo magazzino · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('prelievo', VUOTO_INT)}<div id="prel-corpo"></div>`;
   let T = null;
   const carica = async () => {
-    if (!leggiIntervallo('prelievo')) return; const i = INTERVALLO.prelievo;
+    if (!leggiIntervallo('prelievo')) { $('prel-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 181126) oppure scegli «Mese corrente».</div>'; return; } const i = INTERVALLO.prelievo;
     const mappa = await mesiIntervallo('dp_lavaggi', i.da, i.a), rows = [];
     [...mappa.keys()].sort().forEach(d => { const g = mappa.get(d);
       g.dati.forEach(r => rows.push({ data: d, matr: r.matr, mese: r.mese, anno: r.anno, lotto: r.lotto, forme: num(r.forme), note: '' }));
@@ -1488,10 +1500,10 @@ const mmaa = (m, a) => m && a ? String(m).padStart(2, '0') + '/' + a : '';
 const GIORNI_AS = { sel: null };
 async function pgAS400() {
   const main = $('main'), pr = S.prod === 'PR';
-  main.innerHTML = `<div class="page-title"><h2>${pr ? 'Stampa registrazione AS400' : 'Registrazione AS400'} · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('as400', { da: isoOggi(), a: isoOggi() })}<div id="as-giorni" class="fb"></div><div id="as-corpo"></div>`;
+  main.innerHTML = `<div class="page-title"><h2>${pr ? 'Stampa registrazione AS400' : 'Registrazione AS400'} · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('as400', VUOTO_INT)}<div id="as-giorni" class="fb"></div><div id="as-corpo"></div>`;
   let T = null, mappa = new Map();
   const carica = async () => {
-    if (!leggiIntervallo('as400')) return; const i = INTERVALLO.as400;
+    if (!leggiIntervallo('as400')) { $('as-giorni').innerHTML = ''; $('as-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 181126) oppure scegli «Solo oggi».</div>'; return; } const i = INTERVALLO.as400;
     mappa = await mesiIntervallo('dp_lavaggi', i.da, i.a);
     const giorni = [...mappa.keys()].filter(d => mappa.get(d).dati.length).sort();
     if (!GIORNI_AS.sel || GIORNI_AS.chiave !== i.da + i.a) { GIORNI_AS.sel = new Set(giorni); GIORNI_AS.chiave = i.da + i.a; }
@@ -1578,7 +1590,7 @@ async function pgCarpi() {
 }
 
 // ---------- Scheda consorzio (solo Grana Padano) ----------
-const CONS = { da: isoOggi(), a: isoOggi(), pag: 0, note: {} };
+const CONS = { da: '', a: '', pag: 0, note: {} };
 async function pgConsorzio() {
   const main = $('main'), off = (IMP.consorzio_offset && IMP.consorzio_offset.v) || { x: 0, y: 0 };
   main.innerHTML = `<div class="page-title"><h2>Scheda consorzio · ${PRODOTTI[S.prod]}</h2></div>
@@ -1587,7 +1599,8 @@ async function pgConsorzio() {
     <div class="fb"><button class="btn ghost sm" id="cs-p">◀ Scheda precedente</button><b id="cs-pag"></b><button class="btn ghost sm" id="cs-n">Scheda successiva ▶</button><button class="btn amber sm" id="cs-st">Stampa su modulo prestampato</button><button class="btn ghost sm" id="cs-stc">Stampa con intestazioni</button><button class="btn ghost sm" id="cs-xl">Esporta Excel</button></div><div id="cs-corpo"></div>`;
   let righe = [];
   const carica = async () => {
-    const da = parseData($('cs-da').value, +CONS.da.slice(0, 4)), a = parseData($('cs-a').value, +CONS.a.slice(0, 4)); if (!da || !a) return toast('Date non valide', true);
+    const t1 = $('cs-da').value.trim(), t2 = $('cs-a').value.trim(); if (!t1 && !t2) { $('cs-corpo').innerHTML = '<div class="empty">Scrivi le date da stampare (per esempio 181126).</div>'; $('cs-pag').textContent = ''; return; }
+    const an = +(CONS.da || isoOggi()).slice(0, 4), da = parseData(t1 || t2, an), a = parseData(t2 || t1, an); if (!da || !a) return toast('Date non valide (scrivi per esempio 181126)', true);
     CONS.da = da <= a ? da : a; CONS.a = da <= a ? a : da;
     const mappa = await mesiIntervallo('dp_giornate', CONS.da, CONS.a); righe = [];
     const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)))]; await caricaInfo(S.prod, lotti);
@@ -1610,7 +1623,7 @@ async function pgConsorzio() {
     const head = completa ? `<thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note</th></tr></thead>` : '';
     stampaHTML('Scheda consorzio', completa ? 'TRENTIN SPA · PEGOGNAGA (MN)' : '', `<div style="position:relative;left:${ox}mm;top:${oy}mm"><table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:right">Totale sfridi</td><td class="r">${fmtKg(tot)}</td><td></td></tr></tbody></table></div>`, 'landscape');
   };
-  $('cs-st').onclick = () => stampa(false); $('cs-stc').onclick = () => stampa(true);
+  $('cs-st').onclick = () => righe.length && stampa(false); $('cs-stc').onclick = () => righe.length && stampa(true);
   $('cs-xl').onclick = () => { const v = paginaRighe(); scarica(xlsxSemplice([{ nome: 'Scheda consorzio', righe: [[...cols.map(c => c.l), 'Note'], ...v.map((r, i) => [...cols.map(c => { const x = r[c.k]; return (c.t === 'kg' || c.t === 'i') ? (x == null ? '' : +x) : c.t === 'd' ? isoToIt(x) : (x ?? ''); }), CONS.note[CONS.pag * 15 + i] || ''])], grassetto: [0], larghezze: [6, 12, 14, 16, 12, 10, 10, 12, 14, 14, 12, 30] }]), `SchedaConsorzio_${CONS.da}_${CONS.pag + 1}.xlsx`); };
   $('cs-p').onclick = () => { if (CONS.pag > 0) { CONS.pag--; disegna(); } }; $('cs-n').onclick = () => { if (CONS.pag < pagine() - 1) { CONS.pag++; disegna(); } };
   $('cs-da').onchange = $('cs-a').onchange = carica; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
@@ -1675,6 +1688,7 @@ async function avviaApp() {
 }
 $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) vai(b.dataset.p); });
 $('prodsel').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) cambiaProdotto(b.dataset.p); });
+$('btn-azzera').addEventListener('click', azzeraSelezioni);
 $('btn-aggiorna').addEventListener('click', async () => {
   if (CUR.dirty) return toast('Salva prima la giornata aperta', true);
   Object.keys(CACHE).forEach(k => delete CACHE[k]); lsDelPrefix(); INFO.PR.clear(); INFO.GP.clear(); REG.clear();
@@ -1682,7 +1696,7 @@ $('btn-aggiorna').addEventListener('click', async () => {
   await vai(S.page); toast('Dati aggiornati');
 });
 $('btn-esci').addEventListener('click', async () => { if (sb) await sb.auth.signOut(); location.reload(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { chiudiModal(); chiudiFiltroPop(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { chiudiModal(); chiudiFiltroPop(); azzeraSelezioni(); } });
 (async function avvia() {
   if (DEMO) return avviaApp();
   const { data } = await sb.auth.getSession();
