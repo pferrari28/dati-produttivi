@@ -248,6 +248,10 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet.tab-ro tr.ult td[data-dc="GP"]{background-color:#B9E6B0!important;}
 .sheet.tab-ro tr.ult td[data-dc="PR"]{background-color:#FFE97A!important;}
 @media print{.sheet td[data-dc],.sheet tr.ult td{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+
+.sheet td.b{font-weight:700;}
+.sheet td.negpf{background-color:#FF7F7F!important;color:#5A0000!important;font-weight:700;}
+.sheet.tab-ro tr td.negpf,.sheet.tab-ro tr.ult td.negpf,.sheet.tab-ro tr:hover td.negpf{background-color:#FF7F7F!important;color:#5A0000!important;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -672,7 +676,7 @@ function Tabella(cont, opt) {
         const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
         const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
         const gc = (c.k === 'cod' || c.k === 'codice' || c.k === 'codart') ? gruppoCod(x) : '', cod = gc ? ` data-cod="${gc}"` : '';
-        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}${opt.colData && c.k === 'data' ? ` data-dc="${opt.colData}"` : ''}>${esc(x)}</td>`;
+        return `<td class="${al}${c.b ? ' b' : ''}${c.k === 'pf' && typeof r[c.k] === 'number' && r[c.k] < 0 ? ' negpf' : ''}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}${opt.colData && c.k === 'data' ? ` data-dc="${opt.colData}"` : ''}>${esc(x)}</td>`;
       }).join('') + '</tr>';
     }).join('');
     const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
@@ -817,7 +821,8 @@ function stampaTabella(T, titolo, sub, orient) {
 const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghost sm" data-x="stampa">Stampa / PDF</button><button class="btn ghost sm" data-x="xlsx">Esporta Excel</button></span>`;
 // ====== Fogli giornalieri modificabili: Lavaggi e Lavorazioni ======
 const CUR = { tipo: null, data: null, righe: [], altre: 0, dirty: false, esiste: false };
-const V = { lavaggi: 'giorno', lavorazioni: 'giorno' };        // vista: giorno | elenco
+const V = { lavaggi: 'elenco', lavorazioni: 'elenco' };
+const PRIMO = { lavaggi: true, lavorazioni: true };   // alla prima apertura: ultimo mese con dati        // vista: giorno | elenco
 const MESE_SEL = { lavaggi: meseKey(isoOggi()), lavorazioni: meseKey(isoOggi()) };
 const DATA_SEL = { lavaggi: '', lavorazioni: '' };          // all'inizio la data è vuota
 
@@ -963,7 +968,7 @@ function celleRiga(tipo, i, cols) {
       const v = cc.codice, manuale = r.cod ? ' edited' : '';
       h += `<td data-i="${i}" data-c="${ci}" data-f="cod" class="${cls}${manuale}"${tip}><input ${inpAttr(c)} value="${esc(v)}"></td>`;
     } else {
-      const v = c.c(cc), neg = typeof v === 'number' && v < 0 ? ' neg' : '';
+      const v = c.c(cc), neg = typeof v === 'number' && v < 0 ? (k === 'pf' ? ' neg negpf' : ' neg') : '';
       h += `<td class="ro${c.t === 'kg' || c.t === 'i' ? '' : ' l'} calc ${cls}${neg}" data-i="${i}" data-c="${ci}" data-k="${k}" data-v="${v ?? ''}"${tip}>${c.t === 'i' ? (v == null ? '' : v) : fmtKg(v)}</td>`;
     }
   });
@@ -1312,13 +1317,13 @@ function colsElenco(tipo) {
   const gp = S.prod === 'GP';
   if (tipo === 'lavaggi') return [
     { k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matricola', w: 78 }, { k: 'mese', l: 'Mese', t: 'i0', w: 46, al: 'c' }, { k: 'anno', l: 'Anno', w: 52 },
-    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1 }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 100, tot: 1 }, { k: 'medio', l: 'Peso medio', t: 'kg', w: 80 }, { k: 'pulito', l: 'Pallet pulito', t: 'kg', w: 100, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 130 },
+    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1, b: 1 }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 100, tot: 1 }, { k: 'medio', l: 'Peso medio', t: 'kg', w: 80 }, { k: 'pulito', l: 'Pallet pulito', t: 'kg', w: 100, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 130 },
   ];
   const c = [{ k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'n', l: 'Riga', t: 'i0', w: 52, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matricola', w: 78 }, { k: 'mese', l: 'Mese', t: 'i0', w: 46, al: 'c' }, { k: 'anno', l: 'Anno', w: 52 },
-    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 76 }, { k: 'stag', l: 'Stag.', t: 'i0', w: 52, al: 'c' }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 92, tot: 1 }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 92, tot: 1 },
+    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1, b: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 76 }, { k: 'stag', l: 'Stag.', t: 'i0', w: 52, al: 'c' }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 92, tot: 1 }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 92, tot: 1 },
     { k: 'fmt', l: 'Formato', w: 70 }, { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 88, tot: 1 }, { k: 'segatura', l: 'Segatura', t: 'kg', w: 80, tot: 1 }, { k: 'croste', l: 'Croste', t: 'kg', w: 76, tot: 1 }, { k: 'pulitura', l: 'Puliture', t: 'kg', w: 80, tot: 1 }, { k: 'piall', l: 'Piallatura', t: 'kg', w: 84, tot: 1 }];
   if (gp) c.push({ k: 'q', l: '18% piatti', t: 'kg', w: 84, tot: 1 }, { k: 'marchio', l: 'Marchio', w: 90 });
-  c.push({ k: 'linea', l: 'Linea', w: 110 }, { k: 'pf', l: 'Prodotto finito', t: 'kg', w: 100, tot: 1 }, { k: 'sfridi', l: 'Sfridi totali', t: 'kg', w: 92, tot: 1 });
+  c.push({ k: 'linea', l: 'Linea', w: 110 }, { k: 'pf', l: 'Prodotto finito', t: 'kg', w: 100, tot: 1, b: 1 }, { k: 'sfridi', l: 'Sfridi totali', t: 'kg', w: 92, tot: 1 });
   if (gp) c.push({ k: 'ab', l: 'Polpa + piatti', t: 'kg', w: 92, tot: 1 });
   return c;
 }
@@ -1339,11 +1344,17 @@ function righeElenco(tipo, mappa) {
 const tipoColonna = cols => cols.map(c => c.t === 'i0' ? { ...c, t: 't' } : c);
 let TAB_ELENCO = null;
 async function pgElenco(tipo) {
-  const mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
+  let mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
+  if (PRIMO[tipo]) {                                                  // prima apertura: se il mese corrente è vuoto, va all'ultimo mese con dati (max 3 indietro)
+    PRIMO[tipo] = false;
+    for (let n = 0; n < 3 && mappa.size === 0; n++) { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); mk = MESE_SEL[tipo]; mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk); }
+    if ($('m-lab')) $('m-lab').textContent = meseLabel(mk);
+  }
   if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
   const box = $('elenco-corpo'); if (!box) return;
   TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null });
+  const wrap = box.querySelector('.sheet-wrap'); if (wrap) wrap.scrollTop = wrap.scrollHeight;       // si apre già in fondo, sulle ultime righe
   $('elenco-x').onclick = e => {
     const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
     if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco del mese', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
@@ -1397,10 +1408,17 @@ async function pgGiorno(tipo) {
   } else if (vista === 'periodo') {
     await pgPeriodo(tipo);
   } else {
-    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
+    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
     const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
     $('m-prev').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
     $('m-next').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 1); agg(); };
+    $('nuova-g').onclick = () => {
+      apriModal(`<h2>Registra nuova giornata</h2><p>Scrivi la data (per esempio 191126 oppure 19/11/2026).</p><input id="ng-data" style="font:inherit;font-size:1.1rem;padding:8px 10px;width:100%;border:1px solid var(--line);border-radius:6px" inputmode="numeric" placeholder="gg/mm/aaaa" autocomplete="off"><div class="modal-btns"><button class="btn ghost" data-close>Annulla</button><button class="btn ghost" id="ng-oggi">Oggi</button><button class="btn" id="ng-ok">Apri</button></div>`);
+      const apri = d => { chiudiModal(); V[tipo] = 'giorno'; DATA_SEL[tipo] = d; pgGiorno(tipo); };
+      $('ng-oggi').onclick = () => apri(isoOggi());
+      const ok = () => { const d = parseData($('ng-data').value, +MESE_SEL[tipo].slice(0, 4)); if (!d) return toast('Data non valida (scrivi per esempio 191126)', true); apri(d); };
+      $('ng-ok').onclick = ok; $('ng-data').onkeydown = e => { if (e.key === 'Enter') ok(); }; $('ng-data').focus();
+    };
     agg();
   }
 }
@@ -1776,6 +1794,7 @@ function disegnaMenu() {
 }
 async function vai(id) {
   if (CUR.dirty && V[CUR.tipo] === 'giorno' && (S.page === 'lavaggi' || S.page === 'lavorazioni')) { const r = await chiediSalvataggio(); if (r === 'annulla') return; }
+  if ((id === 'lavaggi' || id === 'lavorazioni') && S.page !== id) V[id] = 'elenco';          // arrivando da un'altra pagina si apre l'elenco, già in fondo
   const m = MENU().find(x => x.id === id) || MENU().find(x => x.id); S.page = m.id; try { sessionStorage.setItem('dp_page', S.page); } catch (e) { }
   CUR.tipo = null; CUR.dirty = false; nascondiSomma(); nascondiTip(); disegnaMenu(); window.scrollTo(0, 0);
   $('main').innerHTML = '<div class="empty">Carico…</div>';
