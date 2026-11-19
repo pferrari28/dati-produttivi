@@ -1275,6 +1275,7 @@ async function pgGiorno(tipo) {
         <span class="data-box"><input type="text" id="g-data-txt" placeholder="gg/mm/aaaa" autocomplete="off" inputmode="numeric" title="Scrivi la data (es. 1911 oppure 19/11/2026) e premi Invio"><button type="button" id="g-cal" title="Calendario"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button><input type="date" id="g-data"></span>
         <button class="btn ghost sm" id="g-next" title="Giorno successivo">▶</button>
         <span id="g-dow" class="note" style="min-width:28px"></span>
+        <button class="btn ghost sm" id="g-azz" title="Svuota la data">Azzera data</button>
         <span id="g-stato" class="stato new">Nuova</span>
         ${tipo === 'lavaggi' ? `<label class="note" style="display:flex;align-items:center;gap:6px;margin-left:10px">Forme lavate per ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}:<input id="g-altre" inputmode="numeric" style="width:70px;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px" placeholder="0"></label>` : ''}
         <span class="spacer"></span>
@@ -1284,6 +1285,7 @@ async function pgGiorno(tipo) {
       <div id="foglio"></div>`;
     eventiFoglio($('foglio'));
     const vai = async s => { if (!String(s).trim()) return; const d = parseData(s, +(DATA_SEL[tipo] || isoOggi()).slice(0, 4)); if (!d) { toast('Data non valida', true); $('g-data-txt').value = isoToIt(CUR.data || DATA_SEL[tipo]); return; } await vaiGiorno(tipo, d); };
+    $('g-azz').onclick = async () => { if (CUR.dirty && CUR.tipo) { const r = await chiediSalvataggio(); if (r === 'annulla') return; } DATA_SEL[tipo] = ''; CUR.dirty = false; CUR.data = null; pgGiorno(tipo); };
     $('g-data-txt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('g-data-txt').addEventListener('change', e => vai(e.target.value));
     $('g-cal').onclick = () => { const d = $('g-data'); d.value = CUR.data || DATA_SEL[tipo] || isoOggi(); d.showPicker ? d.showPicker() : d.click(); };
@@ -1323,7 +1325,7 @@ const VUOTO_INT = { da: '', a: '' };           // all'inizio le date sono vuote
 function barraIntervallo(id, def) {
   const i = INTERVALLO[id] || (INTERVALLO[id] = { da: def.da, a: def.a });
   return `<div class="formrow"><label>Dal<input type="text" id="${id}-da" value="${isoToIt(i.da)}" style="width:110px" inputmode="numeric"></label><label>Al<input type="text" id="${id}-a" value="${isoToIt(i.a)}" style="width:110px" inputmode="numeric"></label>
-    <button class="btn ghost sm" id="${id}-mese">Mese corrente</button><button class="btn ghost sm" id="${id}-oggi">Solo oggi</button>${barraExport(id + '-x')}</div>`;
+    <button class="btn ghost sm" id="${id}-mese">Mese corrente</button><button class="btn ghost sm" id="${id}-oggi">Solo oggi</button><button class="btn ghost sm" id="${id}-azz" title="Svuota le date">Azzera date</button>${barraExport(id + '-x')}</div>`;
 }
 function leggiIntervallo(id) {
   const i = INTERVALLO[id], t1 = $(id + '-da').value.trim(), t2 = $(id + '-a').value.trim(); if (!t1 && !t2) return false;
@@ -1348,6 +1350,7 @@ async function pgPolpa() {
     T = Tabella($('polpa-corpo'), { cols, rows, sepMese: 'giorno' });
   };
   $('polpa-mese').onclick = () => { INTERVALLO.polpa = meseCorrenteInt(); pgPolpa(); };
+  $('polpa-azz').onclick = () => { INTERVALLO.polpa = { da: '', a: '' }; pgPolpa(); };
   $('polpa-oggi').onclick = () => { INTERVALLO.polpa = { da: isoOggi(), a: isoOggi() }; pgPolpa(); };
   $('polpa-da').onchange = $('polpa-a').onchange = carica;
   $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
@@ -1371,6 +1374,7 @@ async function pgPrelievo() {
     $('prel-corpo').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:8px">Le righe ' + altri + ' si scrivono nella pagina Lavaggi (campo «Forme lavate per ' + (S.prod === 'PR' ? 'Carpi' : 'Cerea') + '»). Il totale del giorno è la somma dei lavaggi e di ' + altri + '.</div>');
   };
   $('prelievo-mese').onclick = () => { INTERVALLO.prelievo = meseCorrenteInt(); pgPrelievo(); };
+  $('prelievo-azz').onclick = () => { INTERVALLO.prelievo = { da: '', a: '' }; pgPrelievo(); };
   $('prelievo-oggi').onclick = () => { INTERVALLO.prelievo = { da: isoOggi(), a: isoOggi() }; pgPrelievo(); };
   $('prelievo-da').onchange = $('prelievo-a').onchange = carica;
   $('prelievo-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.prelievo, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
@@ -1523,6 +1527,7 @@ async function pgAS400() {
     if (d === '*') GIORNI_AS.sel = new Set([...mappa.keys()].filter(x => mappa.get(x).dati.length)); else if (d === '-') GIORNI_AS.sel = new Set(); else GIORNI_AS.sel.has(d) ? GIORNI_AS.sel.delete(d) : GIORNI_AS.sel.add(d);
     carica(); };
   $('as400-mese').onclick = () => { INTERVALLO.as400 = meseCorrenteInt(); pgAS400(); };
+  $('as400-azz').onclick = () => { INTERVALLO.as400 = { da: '', a: '' }; pgAS400(); };
   $('as400-oggi').onclick = () => { INTERVALLO.as400 = { da: isoOggi(), a: isoOggi() }; pgAS400(); };
   $('as400-da').onchange = $('as400-a').onchange = () => { GIORNI_AS.sel = null; carica(); };
   $('as400-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.as400, sub = `lavaggi dal ${isoToIt(i.da)} al ${isoToIt(i.a)} · ${GIORNI_AS.sel.size} giornate`;
@@ -1594,7 +1599,7 @@ const CONS = { da: '', a: '', pag: 0, note: {} };
 async function pgConsorzio() {
   const main = $('main'), off = (IMP.consorzio_offset && IMP.consorzio_offset.v) || { x: 0, y: 0 };
   main.innerHTML = `<div class="page-title"><h2>Scheda consorzio · ${PRODOTTI[S.prod]}</h2></div>
-    <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button>
+    <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button><button class="btn ghost sm" id="cs-azz" title="Svuota le date">Azzera date</button>
       <label>Spostamento X (mm)<input id="cs-x" style="width:80px" value="${off.x}"></label><label>Spostamento Y (mm)<input id="cs-y" style="width:80px" value="${off.y}"></label></div>
     <div class="fb"><button class="btn ghost sm" id="cs-p">◀ Scheda precedente</button><b id="cs-pag"></b><button class="btn ghost sm" id="cs-n">Scheda successiva ▶</button><button class="btn amber sm" id="cs-st">Stampa su modulo prestampato</button><button class="btn ghost sm" id="cs-stc">Stampa con intestazioni</button><button class="btn ghost sm" id="cs-xl">Esporta Excel</button></div><div id="cs-corpo"></div>`;
   let righe = [];
@@ -1626,7 +1631,7 @@ async function pgConsorzio() {
   $('cs-st').onclick = () => righe.length && stampa(false); $('cs-stc').onclick = () => righe.length && stampa(true);
   $('cs-xl').onclick = () => { const v = paginaRighe(); scarica(xlsxSemplice([{ nome: 'Scheda consorzio', righe: [[...cols.map(c => c.l), 'Note'], ...v.map((r, i) => [...cols.map(c => { const x = r[c.k]; return (c.t === 'kg' || c.t === 'i') ? (x == null ? '' : +x) : c.t === 'd' ? isoToIt(x) : (x ?? ''); }), CONS.note[CONS.pag * 15 + i] || ''])], grassetto: [0], larghezze: [6, 12, 14, 16, 12, 10, 10, 12, 14, 14, 12, 30] }]), `SchedaConsorzio_${CONS.da}_${CONS.pag + 1}.xlsx`); };
   $('cs-p').onclick = () => { if (CONS.pag > 0) { CONS.pag--; disegna(); } }; $('cs-n').onclick = () => { if (CONS.pag < pagine() - 1) { CONS.pag++; disegna(); } };
-  $('cs-da').onchange = $('cs-a').onchange = carica; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
+  $('cs-da').onchange = $('cs-a').onchange = carica; $('cs-azz').onclick = () => { CONS.da = CONS.a = ''; pgConsorzio(); }; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
   await carica();
 }
 // ====== Guscio: menu, selettore prodotto, login, avvio ======
