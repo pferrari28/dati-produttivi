@@ -530,7 +530,7 @@ function stagionatura(dataIso, mese, anno) {
 }
 function calcLavaggio(prod, r) {
   const p = PAR[prod], f = num(r.forme), s = num(r.sporco);
-  return { medio: f ? s / f : null, pulito: s ? s - s * p.calo / 100 : null, codice: codiceDi(prod, r) };
+  return { medio: f ? s / f : null, pulito: s ? mround(s - s * p.calo / 100) : null, codice: codiceDi(prod, r) };
 }
 function calcLavorazione(prod, dataIso, r) {
   const p = PAR[prod], f = num(r.forme), inf = infoLotto(prod, r.lotto);
@@ -861,7 +861,6 @@ function colsGiorno(tipo) {
     { k: 'forme', l: 'Forme', t: 'int', w: 62, tot: 1, g: 'mp' },
     { k: 'kgf', l: 'Kg forma', t: 'kgf', c: x => x.kgf, w: 76 },
     { k: 'stag', l: 'Stag.', c: x => x.stag, t: 'i', w: 52, s: 1 },
-    { k: 'sporco', l: 'Pallet sporco', c: x => x.sporco, t: 'kg', w: 92, tot: 1 },
     { k: 'lavorati', l: 'Kg lavorati', c: x => x.lavorati, t: 'kg', w: 92, tot: 1 },
     { k: 'fmt', l: 'Formato', t: 'fmt', w: 76 },
     { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 92, tot: 1 },
@@ -870,7 +869,7 @@ function colsGiorno(tipo) {
     { k: 'pulitura', l: 'Puliture a perdere', c: x => x.pulitura, t: 'kg', w: 86, tot: 1 },
     { k: 'piall', l: 'Piallatura taglio liscio', c: x => x.piall, t: 'kg', w: 92, tot: 1 },
   ];
-  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'ov', c: x => x.q, w: 84, tot: 1 }, { k: 'marchio', l: 'Marchio', t: 'txt', w: 100 });
+  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'ov', c: x => x.q, w: 84, tot: 1 });
   c.push({ k: 'linea', l: 'Linea', t: 'linea', w: 112 },
     { k: 'pf', l: 'Prodotto finito', c: x => x.pf, t: 'kg', w: 100, tot: 1, pf: 1 },
     { k: 'sfridi', l: 'Sfridi totali', c: x => x.sfridi, t: 'kg', w: 92, tot: 1, pf: 1 });
@@ -1327,9 +1326,9 @@ function colsElenco(tipo) {
     { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1, b: 1 }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 100, tot: 1 }, { k: 'medio', l: 'Peso medio', t: 'kg', w: 80 }, { k: 'pulito', l: 'Pallet pulito', t: 'kg', w: 100, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 130 },
   ];
   const c = [{ k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'n', l: 'Riga', t: 'i0', w: 52, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matricola', w: 78 }, { k: 'mese', l: 'Mese', t: 'i0', w: 46, al: 'c' }, { k: 'anno', l: 'Anno', w: 52 },
-    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1, b: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 76 }, { k: 'stag', l: 'Stag.', t: 'i0', w: 52, al: 'c' }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 92, tot: 1 }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 92, tot: 1 },
+    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1, b: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 76 }, { k: 'stag', l: 'Stag.', t: 'i0', w: 52, al: 'c' }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 92, tot: 1 },
     { k: 'fmt', l: 'Formato', w: 70 }, { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 88, tot: 1 }, { k: 'segatura', l: 'Segatura', t: 'kg', w: 80, tot: 1 }, { k: 'croste', l: 'Croste', t: 'kg', w: 76, tot: 1 }, { k: 'pulitura', l: 'Puliture', t: 'kg', w: 80, tot: 1 }, { k: 'piall', l: 'Piallatura', t: 'kg', w: 84, tot: 1 }];
-  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'kg', w: 84, tot: 1 }, { k: 'marchio', l: 'Marchio', w: 90 });
+  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'kg', w: 84, tot: 1 });
   c.push({ k: 'linea', l: 'Linea', w: 110 }, { k: 'pf', l: 'Prodotto finito', t: 'kg', w: 100, tot: 1, b: 1 }, { k: 'sfridi', l: 'Sfridi totali', t: 'kg', w: 92, tot: 1 });
   if (gp) c.push({ k: 'ab', l: 'Polpa + piatti', t: 'kg', w: 92, tot: 1 });
   return c;
