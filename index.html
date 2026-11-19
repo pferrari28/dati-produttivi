@@ -240,6 +240,14 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #foglio-t th.fg{cursor:pointer;}
 #foglio-t th.fg:hover{background:#E3EAF2;}
 #foglio-t th.fg.on{color:#1F6FEB;}
+
+/* lavorazioni: colonna data (PR giallo, GP verde) e ultima riga di ogni giornata in giallo */
+.sheet td[data-dc="PR"]{background-color:#FFE97A!important;font-weight:600;}
+.sheet td[data-dc="GP"]{background-color:#B9E6B0!important;font-weight:600;}
+.sheet.tab-ro tr.ult td{background-color:#FFF0A0!important;border-bottom:2px solid #D9B600;}
+.sheet.tab-ro tr.ult td[data-dc="GP"]{background-color:#B9E6B0!important;}
+.sheet.tab-ro tr.ult td[data-dc="PR"]{background-color:#FFE97A!important;}
+@media print{.sheet td[data-dc],.sheet tr.ult td{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -656,6 +664,7 @@ function Tabella(cont, opt) {
     const tb = v.map((r, ri) => {
       let cls = '';
       if (opt.sepMese && r.data) { const m = opt.sepMese === 'giorno' ? r.data : r.data.slice(0, 7); if (prevM && m !== prevM) cls = ' class="sepm"'; prevM = m; }
+      if (r._ult) cls = cls ? cls.replace('sepm', 'sepm ult') : ' class="ult"';
       return `<tr${cls}>` + cols.map((c, ci) => {
         const x = valTxt(c, r[c.k]);
         const al = (c.t === 'kg' || c.t === 'i') ? 'r' : (c.t === 'd' || c.al === 'c') ? 'c' : '';
@@ -663,7 +672,7 @@ function Tabella(cont, opt) {
         const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
         const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
         const gc = (c.k === 'cod' || c.k === 'codice' || c.k === 'codart') ? gruppoCod(x) : '', cod = gc ? ` data-cod="${gc}"` : '';
-        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}>${esc(x)}</td>`;
+        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}${opt.colData && c.k === 'data' ? ` data-dc="${opt.colData}"` : ''}>${esc(x)}</td>`;
       }).join('') + '</tr>';
     }).join('');
     const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
@@ -1324,6 +1333,7 @@ function righeElenco(tipo, mappa) {
       out.push(o);
     }
   }));
+  if (tipo === 'lavorazioni') out.forEach((o, i) => { if (!out[i + 1] || out[i + 1].data !== o.data) o._ult = true; });   // ultima riga di ogni giornata
   return out;
 }
 const tipoColonna = cols => cols.map(c => c.t === 'i0' ? { ...c, t: 't' } : c);
@@ -1333,7 +1343,7 @@ async function pgElenco(tipo) {
   if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows });
+  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null });
   $('elenco-x').onclick = e => {
     const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
     if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco del mese', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
