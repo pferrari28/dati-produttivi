@@ -1,0 +1,1695 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dati produttivi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --ink:#17212B; --muted:#566574;
+  --line:#D8DEE4; --green:#1C2630; --green-dark:#2F3F50; --amber:#E3B23C;
+  --danger:#B3261E; --danger-bg:#FDE7E6; --link:#2F5D8A; --head:#F6F8FA; --ok:#1E7A47; --ok-bg:#E6F4EC;
+  --warn-bg:#FFF1C2; --warn:#8A5A00; --side:#1C2630; --radius:8px; --calc:#F3F6F9; --mp:#F7FAFD; --pf:#FBFAF5;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Barlow","Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;}
+[hidden]{display:none !important;}
+.app{display:flex;min-height:100vh;}
+.side{flex:0 0 210px;background:var(--side);color:#DCE3EA;padding:26px 14px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;}
+.side h1{font-size:1.6rem;margin:0;color:#fff;font-weight:600;}
+.side .sub{margin:4px 0 0;font-size:.8rem;color:#A9B8C6;}
+.tabs{display:flex;flex-direction:column;gap:3px;}
+.tabs .sep{height:1px;background:#34414F;margin:10px 4px;}
+.tab-btn{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:10px 13px;border-radius:6px;border:0;background:none;color:#DCE3EA;font:inherit;font-size:1rem;font-weight:500;cursor:pointer;}
+.tab-btn:hover{background:rgba(255,255,255,.08);}
+.tab-btn.active{background:var(--amber);color:#1C2630;font-weight:700;}
+.tab-btn .cnt{font-size:.75rem;opacity:.75;font-weight:600;}
+.tab-btn .dot{width:8px;height:8px;border-radius:50%;background:#FF7A80;display:inline-block;}
+.side-foot{margin-top:auto;font-size:.8rem;color:#A9B8C6;display:flex;flex-direction:column;gap:8px;}
+.side-foot button{background:none;border:1px solid #4A5A69;color:#DCE3EA;padding:7px 12px;font:inherit;font-size:.8rem;border-radius:6px;cursor:pointer;}
+.side-foot button:hover{border-color:var(--amber);color:var(--amber);}
+.demo-badge{background:var(--amber);color:#1C2630;border-radius:6px;padding:6px 9px;font-weight:600;line-height:1.3;}
+
+.main-area{flex:1 1 auto;min-width:0;padding:0 24px 60px;}
+.daybar{position:sticky;top:0;z-index:20;background:var(--bg);padding:14px 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px;}
+.daybar label{font-weight:600;}
+.data-box{position:relative;display:inline-flex;align-items:center;border:2px solid var(--amber);border-radius:6px;background:var(--panel);}
+.data-box #g-data-txt{font:inherit;font-size:1.1rem;font-weight:600;padding:7px 4px 7px 10px;border:0;width:130px;background:transparent;color:var(--ink);outline:none;}
+.data-box #g-cal{border:0;background:none;cursor:pointer;padding:6px 10px;color:var(--muted);display:flex;}
+.data-box #g-cal:hover{color:var(--ink);}
+.data-box #g-data{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0;}
+.daybar input[type=date]{font:inherit;font-size:1.1rem;padding:7px 10px;border:2px solid var(--amber);border-radius:6px;background:var(--panel);color:var(--ink);font-weight:600;}
+.stato{font-size:.85rem;padding:5px 10px;border-radius:20px;font-weight:600;}
+.stato.ok{background:var(--ok-bg);color:var(--ok);}
+.stato.mod{background:var(--warn-bg);color:var(--warn);}
+.stato.new{background:#E7EEF6;color:var(--link);}
+.stato.bz{background:#EDE7F6;color:#5B3E96;}
+.daybar .spacer{flex:1;}
+.btn{border:0;border-radius:6px;background:var(--green);color:#fff;font:inherit;font-weight:600;font-size:.92rem;padding:9px 16px;cursor:pointer;}
+.btn:hover{background:var(--green-dark);}
+.btn.amber{background:var(--amber);color:#1C2630;}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+.btn.ghost:hover{border-color:var(--link);color:var(--link);}
+.btn.danger{background:var(--danger);}
+.btn.sm{padding:6px 11px;font-size:.82rem;}
+.btn:disabled{opacity:.55;cursor:wait;}
+
+.view{display:none;}
+.view.active{display:block;}
+.page-title{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:0 0 14px;}
+.page-title h2{margin:0;font-size:1.45rem;font-weight:700;letter-spacing:.01em;}
+.pill{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:.9rem;}
+.pill b{font-size:1.05rem;font-variant-numeric:tabular-nums;}
+.pill.neg{border-color:var(--danger);background:var(--danger-bg);color:var(--danger);}
+.pill.neg input{border-color:var(--danger);box-shadow:inset 0 0 0 1px var(--danger);}
+.pill input{font:inherit;font-weight:700;width:90px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;text-transform:uppercase;}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px;}
+.toolbar input[type=search],.toolbar input[type=text]{font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:6px;min-width:260px;background:var(--panel);}
+.toolbar .info{color:var(--muted);font-size:.85rem;}
+.toolbar select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);}
+
+.sheet-wrap{background:var(--panel);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 210px);border:1px solid var(--line);}
+table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums;}
+.sheet th{background:var(--head);color:var(--muted);font-weight:600;font-size:.74rem;line-height:1.15;padding:6px 5px;border:1px solid var(--line);position:sticky;z-index:3;text-align:center;}
+.sheet thead tr.g th{top:0;font-size:.78rem;color:var(--ink);font-weight:700;letter-spacing:.03em;}
+.sheet thead tr.h th{top:27px;}
+.sheet td{border:1px solid var(--line);padding:0;height:30px;}
+.sheet td.n{background:var(--head);color:var(--muted);text-align:center;font-size:.8rem;width:38px;min-width:38px;font-weight:600;}
+.sheet td.mp{background:var(--mp);}
+.sheet td.pf{background:var(--pf);}
+.sheet input{border:0;background:transparent;width:100%;height:30px;padding:0 6px;font:inherit;font-size:.9rem;color:var(--ink);outline:none;}
+.sheet input:focus{background:#EAF2FB;box-shadow:inset 0 0 0 2px var(--link);}
+.sheet td.r input{text-align:right;}
+.sheet td.c input{text-align:center;}
+.sheet td.up input{text-transform:uppercase;}
+.sheet td.err{background:var(--danger-bg) !important;box-shadow:inset 0 0 0 2px var(--danger);}
+.sheet tr.vietato td{background:#F8B4B4 !important;}
+.sheet tr.vietato td.n{background:var(--danger) !important;color:#fff;}
+.sheet td.auto{background:#E6F4EC !important;transition:background .4s;}
+.sheet td.rosso{background:#FF9999 !important;}
+.sheet td.rosso input{font-weight:700;}
+.legend .lr::before{background:#FF9999;}
+.legend .lv::before{background:#F8B4B4;box-shadow:inset 3px 0 0 var(--danger);}
+.sheet td.warn{background:var(--warn-bg) !important;box-shadow:inset 0 0 0 2px #E3B23C;}
+.sheet td.calc[data-f=lottoPF]{text-align:center;color:var(--ink);font-weight:500;}
+.sheet td.calc{background:var(--calc);text-align:right;padding:0 8px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.sheet td.calc.neg{color:var(--danger);background:var(--danger-bg);}
+.sheet td.calc.zero{color:var(--ok);}
+.sheet td.chk{text-align:center;cursor:pointer;user-select:none;font-weight:700;font-size:1rem;width:44px;}
+.sheet td.chk:hover{background:#FFFBEA;}
+.sheet tfoot td{background:var(--head);font-weight:700;text-align:right;padding:0 8px;height:32px;border-top:2px solid #AEB8C2;white-space:nowrap;}
+.sheet tfoot td.lbl{text-align:left;color:var(--muted);}
+.sheet tr.hide{display:none;}
+.sheet td.sepcol{width:6px;min-width:6px;padding:0;background:#AEB8C2;border:0;}
+.addrow{margin:10px 0 0;display:flex;gap:10px;align-items:center;}
+.sheet tbody td.n.on{background:#1F6FEB !important;color:#fff !important;font-size:.95rem;box-shadow:inset 0 0 0 1px #1F6FEB;}
+.sheet td.sel{background-image:linear-gradient(rgba(31,111,235,.20),rgba(31,111,235,.20));outline:2px solid #1F6FEB;outline-offset:-2px;}
+.sheet.selmode{user-select:none;-webkit-user-select:none;cursor:cell;}
+.sheet.selmode input{pointer-events:none;}
+.selsum{position:fixed;z-index:190;background:#1F2A37;color:#fff;font-size:.84rem;padding:7px 11px;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.3);pointer-events:none;white-space:nowrap;}
+.selsum b{font-size:.98rem;margin-left:3px;}
+.selsum span{opacity:.75;margin-left:10px;}
+.tip{position:fixed;z-index:200;background:var(--danger);color:#fff;font-size:.8rem;font-weight:600;padding:6px 9px;border-radius:5px;max-width:320px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.tip.w{background:#8A5A00;}
+.legend{font-size:.8rem;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px;}
+.legend .le::before{background:var(--danger-bg);box-shadow:inset 0 0 0 2px var(--danger);}
+.legend .lw::before{background:var(--warn-bg);box-shadow:inset 0 0 0 2px #E3B23C;}
+
+.panel{background:var(--panel);border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;border:1px solid var(--line);}
+.panel h3{margin:0 0 12px;font-size:1.05rem;}
+.list th,.list td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;}
+.list th{background:var(--head);color:var(--muted);font-size:.76rem;font-weight:600;position:sticky;top:0;z-index:2;}
+.list td.r,.list th.r{text-align:right;}
+.list th.thf{cursor:pointer;user-select:none;}
+.list th.thf:hover{background:#E9EEF3;color:var(--ink);}
+.list th.thf .fil{font-size:.7rem;opacity:.45;margin-left:2px;}
+.list th.thf .fil.on{opacity:1;color:var(--link);}
+.list th.thf.attivo{background:#E7EEF6;color:var(--link);}
+.conf-lotto td,.conf-lotto thead tr:last-child th{white-space:nowrap;width:1%;padding-right:22px;}
+.conf-lotto td:nth-child(2),.conf-lotto thead tr:last-child th:nth-child(2){width:auto;}
+.conf-lotto tr.vai{cursor:pointer;}
+.conf-lotto tr.uff td{background:var(--ok-bg);}
+.conf-lotto tr.vai:hover td{background:#FFFBEA;}
+.filtro-pop{position:absolute;z-index:150;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22);width:270px;padding:10px;font-size:.88rem;}
+.filtro-pop .fp-tit{font-weight:700;margin:0 0 6px 2px;}
+.filtro-pop .fp-op{display:block;width:100%;text-align:left;border:0;background:none;font:inherit;padding:6px 6px;border-radius:5px;cursor:pointer;color:var(--ink);}
+.filtro-pop .fp-op:hover{background:var(--head);}
+.filtro-pop .fp-cerca{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:5px;margin:6px 0;}
+.filtro-pop .fp-lista{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:5px;padding:4px 0;}
+.filtro-pop .fp-v{display:flex;gap:6px;align-items:center;padding:3px 8px;cursor:pointer;}
+.filtro-pop .fp-v:hover{background:var(--head);}
+.filtro-pop .fp-v i{margin-left:auto;color:var(--muted);font-style:normal;font-size:.78rem;}
+.filtro-pop .fp-tutti{font-weight:600;}
+.filtro-pop .fp-btn{display:flex;gap:6px;margin-top:8px;align-items:center;}
+.list tfoot td{font-weight:700;background:var(--head);border-top:2px solid #AEB8C2;}
+.list tr.tot td{font-weight:700;background:var(--head);}
+.list .act{display:flex;gap:6px;}
+.list-wrap{overflow:auto;max-height:calc(100vh - 250px);}
+.empty{color:var(--muted);padding:26px;text-align:center;}
+.subtabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap;}
+.subtabs button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--panel);padding:7px 14px;border-radius:20px;cursor:pointer;color:var(--ink);}
+.subtabs button.on{background:var(--side);color:#fff;border-color:var(--side);}
+.mesi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px;}
+
+.modal{position:fixed;inset:0;background:rgba(10,16,22,.55);z-index:90;display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto;}
+.modal.show{display:flex;}
+.modal-card{background:var(--panel);border-radius:var(--radius);padding:22px 24px;width:100%;max-width:640px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+.modal-card h2{margin:0 0 12px;font-size:1.2rem;}
+.modal-card p{margin:0 0 12px;line-height:1.45;}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+.errlist{max-height:50vh;overflow:auto;margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:6px;}
+.errlist li{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:.92rem;}
+.errlist li:hover{background:var(--head);}
+.errlist li b{display:inline-block;min-width:150px;}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--side);color:#fff;padding:12px 22px;border-radius:8px;font-weight:600;z-index:130;display:none;}
+.toast.show{display:block;}
+.toast.err{background:var(--danger);}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--side);}
+.login-card{background:var(--panel);border-radius:10px;padding:30px 32px;width:340px;}
+.login-card h1{margin:0 0 4px;}
+.login-card p{margin:0 0 18px;color:var(--muted);}
+.login-card input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:12px;}
+.login-card .btn{width:100%;padding:11px;}
+.login-card .err{color:var(--danger);font-weight:600;font-size:.9rem;min-height:1.2em;}
+.prodsel{display:flex;gap:4px;background:#27343F;border-radius:8px;padding:3px;}
+.prodsel button{flex:1;border:0;background:none;color:#DCE3EA;font:inherit;font-weight:600;font-size:.86rem;padding:7px 4px;border-radius:6px;cursor:pointer;}
+.prodsel button.on{background:var(--amber);color:#1C2630;}
+.side h1 small{display:block;font-size:.78rem;color:#A9B8C6;font-weight:500;margin-top:2px;}
+.tab-btn.gp-only,.tab-btn.pr-only{}
+.nav-title{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#7F90A1;margin:12px 6px 2px;}
+.sheet td.ro{background:var(--calc);padding:0 8px;text-align:right;white-space:nowrap;color:var(--ink);}
+.sheet td.ro.l{text-align:left;}
+.sheet td.ro.c{text-align:center;}
+.sheet td.ro.neg{color:var(--danger);}
+.sheet td.edited input{font-weight:700;}
+.sheet td.cur-r input{background:#FFF8DC;}
+.sheet tr.attiva td.n{background:#1F6FEB;color:#fff;}
+.sheet .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1rem;width:100%;height:30px;}
+.sheet .del:hover{color:var(--danger);}
+.sheet.tab-ro td{padding:0 8px;height:28px;white-space:nowrap;}
+.sheet.tab-ro td.r{text-align:right;}
+.sheet.tab-ro td.c{text-align:center;}
+.sheet.tab-ro td.cur{outline:2px solid #1F6FEB;outline-offset:-2px;}
+.sheet.tab-ro td.sel{background-image:linear-gradient(rgba(31,111,235,.20),rgba(31,111,235,.20));}
+.sheet.tab-ro tr.sepm td{border-top:2px solid #AEB8C2;}
+.sheet.tab-ro tr:hover td:not(.sel){background:#FAFCFE;}
+.sheet.tab-ro th{cursor:pointer;user-select:none;}
+.sheet.tab-ro th:hover{background:#E9EEF3;color:var(--ink);}
+.sheet.tab-ro th.on{background:#E7EEF6;color:var(--link);}
+.sheet.tab-ro th .ar{font-size:.68rem;margin-left:3px;}
+.sheet.tab-ro{outline:none;}
+.fb{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap;align-items:center;}
+.fb .btn{padding:7px 12px;font-size:.84rem;}
+.mesenav{display:inline-flex;align-items:center;gap:6px;}
+.mesenav button{border:1px solid var(--line);background:var(--panel);border-radius:6px;font:inherit;font-weight:700;padding:6px 11px;cursor:pointer;}
+.mesenav b{min-width:140px;text-align:center;font-size:1.05rem;}
+.big{font-size:1.1rem;font-weight:700;}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 14px;}
+.kpi .pill b{font-variant-numeric:tabular-nums;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;}
+.formrow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin:0 0 12px;}
+.formrow label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted);gap:4px;font-weight:600;}
+.formrow input,.formrow select{font:inherit;font-size:.95rem;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);}
+.note{font-size:.84rem;color:var(--muted);line-height:1.4;}
+.okbox{background:var(--ok-bg);color:var(--ok);padding:8px 12px;border-radius:6px;font-weight:600;}
+.errbox{background:var(--danger-bg);color:var(--danger);padding:8px 12px;border-radius:6px;font-weight:600;}
+.fbar{position:fixed;z-index:180;background:#1F2A37;color:#fff;font-size:.85rem;padding:5px 10px;border-radius:5px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.3);}
+.printonly{display:none;}
+@media print{
+  body{background:#fff;}
+  .app,.login,.modal,.toast,.tip,.selsum,.fbar,.filtro-pop{display:none !important;}
+  .printonly{display:block !important;}
+  #print-area{font-family:Arial,Helvetica,sans-serif;color:#000;}
+  #print-area h2{font-size:13pt;margin:0 0 4px;}
+  #print-area .psub{font-size:9pt;margin:0 0 8px;}
+  #print-area table{border-collapse:collapse;width:100%;font-size:8.5pt;}
+  #print-area th,#print-area td{border:1px solid #444;padding:2px 4px;}
+  #print-area th{background:#e8e8e8;}
+  #print-area td.r{text-align:right;}
+  #print-area tr.tot td{font-weight:bold;background:#f0f0f0;}
+  #print-area tr{page-break-inside:avoid;}
+  #print-area thead{display:table-header-group;}
+}
+</style></head>
+<body>
+<script src="vendor/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>')</script>
+<div id="login" class="login" hidden>
+  <form class="login-card" id="login-form">
+    <h1>Dati produttivi</h1>
+    <p>Accesso · Paolo</p>
+    <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="login-err"></div>
+    <button class="btn" type="submit">Entra</button>
+  </form>
+</div>
+<div class="app" id="app" hidden>
+  <aside class="side">
+    <div><h1 id="side-t">Dati produttivi</h1></div>
+    <div class="prodsel" id="prodsel"><button data-p="PR">Parmigiano</button><button data-p="GP">Grana Padano</button></div>
+    <nav class="tabs" id="tabs"></nav>
+    <div class="side-foot">
+      <div id="demo-badge" class="demo-badge" hidden>Modalità prova: i dati restano solo in questo browser.</div>
+      <button id="btn-aggiorna" type="button">Aggiorna dati</button>
+      <button id="btn-esci" type="button" hidden>Esci</button>
+    </div>
+  </aside>
+  <main class="main-area" id="main"></main>
+</div>
+<div class="modal" id="modal"><div class="modal-card" id="modal-card"></div></div>
+<div class="toast" id="toast"></div>
+<div class="tip" id="tip" hidden></div>
+<div class="selsum" id="selsum" hidden></div>
+<script>
+'use strict';
+// ====== CONFIGURAZIONE (stesso progetto Supabase del registro lotti, tabelle dp_* separate) ======
+const SUPABASE_URL = 'https://jeyaymdllslsssqnovdj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_T3tpl8qpQuMrXoWMj1L1yg_6O-1vJgJ';
+const EMAIL_PAOLO = 'admin@lotti.local';
+const FORZA_DEMO = false;
+// ================================================================================================
+const DEMO = FORZA_DEMO || !window.supabase || /[?&]demo\b/.test(location.search);
+const sb = DEMO ? null : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const MESI_LUNGHI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+const GIORNI = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+const PRODOTTI = { PR: 'Parmigiano Reggiano', GP: 'Grana Padano' };
+
+// ---------- formati ----------
+const fmtKg = n => (n == null || n === '' || isNaN(n)) ? '' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
+const fmtKg0 = n => (n == null || n === '' || isNaN(n)) ? '' : Number(n).toLocaleString('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' });
+const isoOggi = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const isoToIt = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
+const meseKey = iso => iso.slice(0, 7);
+const meseLabel = mk => MESI_LUNGHI[+mk.slice(5, 7) - 1] + ' ' + mk.slice(0, 4);
+const meseAdd = (mk, n) => { const d = new Date(+mk.slice(0, 4), +mk.slice(5, 7) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const fineMese = mk => { const d = new Date(+mk.slice(0, 4), +mk.slice(5, 7), 0); return mk + '-' + String(d.getDate()).padStart(2, '0'); };
+const giornoSett = iso => GIORNI[new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)).getDay()];
+const vuoto = v => v == null || v === '' || v === false;
+const num = v => (v == null || v === '' || isNaN(v)) ? 0 : Number(v);
+const mround = x => Math.round(x * 2 + 1e-9) / 2;                       // MROUND(x; 0,5) di Excel
+const r2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
+const normMatr = m => String(m ?? '').trim().toUpperCase().replace(/\s+/g, ' ');
+const confrontaTxt = (a, b) => String(a).localeCompare(String(b), 'it', { numeric: true, sensitivity: 'base' });
+
+// numero: accetta 1.234,5  1234,5  1234.5  e somme (=12+24 oppure 12+24)
+function parseNum(s) {
+  s = String(s ?? '').trim().replace(/\s/g, '');
+  if (!s) return null;
+  if (!s.startsWith('=') && /^[\d.,]+(\+[\d.,]+)+$/.test(s)) s = '=' + s;
+  if (s.startsWith('=')) {
+    const e = s.slice(1).replace(/\.(?=\d{3}(\D|$))/g, '').replace(/,/g, '.');
+    if (!/^[\d.+\-*/()]+$/.test(e)) return NaN;
+    try { const r = Function('"use strict";return (' + e + ')')(); return isFinite(r) ? Math.round(r * 1000) / 1000 : NaN; } catch (x) { return NaN; }
+  }
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = Number(s);
+  return isNaN(n) ? NaN : n;
+}
+// data: 1711 · 17/11 · 17/11/2026 · 17-11-26
+function parseData(s, anno) {
+  s = String(s ?? '').trim();
+  let r = s.match(/^(\d{1,2})[\/\-. ](\d{1,2})(?:[\/\-. ](\d{2}|\d{4}))?$/), d, m, y = anno;
+  if (r) { d = +r[1]; m = +r[2]; if (r[3]) y = r[3].length === 2 ? 2000 + +r[3] : +r[3]; }
+  else if ((r = s.match(/^(\d{3,4})$/))) { const t = r[1].padStart(4, '0'); d = +t.slice(0, 2); m = +t.slice(2); }
+  else if ((r = s.match(/^(\d{6}|\d{8})$/))) { d = +r[1].slice(0, 2); m = +r[1].slice(2, 4); y = r[1].length === 6 ? 2000 + +r[1].slice(4) : +r[1].slice(4); }
+  else return null;
+  if (!(m >= 1 && m <= 12 && d >= 1 && y)) return null;
+  if (d > new Date(y, m, 0).getDate()) return null;
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+// ---------- regole del dominio ----------
+const RE_LOTTO = /^(\d{2})?P\d+$/;                                     // 26P123 oppure P1792
+const LINEE = { S: 'SV', F: 'FILMATO', T: 'TAGLIO LISCIO' };
+const LINEE_OK = ['SV', 'FILMATO', 'TAGLIO LISCIO', 'PRETAGLIATO'];
+const TL = 'TAGLIO LISCIO';
+const FORMATI_FISSI = ['1KG', '2KG', '1/2', 'QUARTI', 'OTTAVI'];
+const normFormato = v => String(v ?? '').trim().toUpperCase().replace(/\s+/g, '');
+const grammi = f => { const m = /^(\d+)G$/.exec(f); return m ? +m[1] : null; };
+const formatoOk = f => grammi(f) != null || FORMATI_FISSI.includes(f);
+const PARAM_DEF = {
+  PR: { calo: 0.391587048, segatura: 0.05, croste: 2.4, pulitura: 0.05, piallatura: 2.6, limite_croste_g: 500, peso_min: 35, peso_max: 45 },
+  GP: { calo: 0.391587048, segatura: 0.05, croste: 2.4, pulitura: 0.05, piallatura: 2.6, limite_croste_g: 500, peso_min: 34, peso_max: 45, piatti_pct: 18 },
+};
+
+// ---------- stato ----------
+const S = { prod: 'PR', page: 'lavaggi', user: null };
+const PAR = { PR: { ...PARAM_DEF.PR }, GP: { ...PARAM_DEF.GP } };
+const CODICI = { PR: {}, GP: {} };                // matricola → codice
+const IMP = {};                                  // altre impostazioni (chiave → valore)
+const REG = new Map();                           // lotto → registro lotti {matr,mese,anno,prodotto,arrivo} | null
+const INFO = { PR: new Map(), GP: new Map() };   // lotto → {matr,mese,anno,media,n_righe,n_forme} | null
+const CACHE = {};                                // 'tab|prod|mese' → Map data → {dati, altre}
+
+// ---------- archivio locale (DEMO) ----------
+const demoGet = k => { try { return JSON.parse(localStorage.getItem('dp_demo_' + k) || 'null'); } catch (e) { return null; } };   // solo modalità prova
+const demoSet = (k, v) => localStorage.setItem('dp_demo_' + k, JSON.stringify(v));
+
+const blocchi = (a, n = 200) => { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
+const ok = r => { if (r.error) throw r.error; return r; };
+
+// cache locale dei mesi chiusi (meno richieste)
+const lsGet = k => { try { return JSON.parse(localStorage.getItem('dp:' + k) || 'null'); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem('dp:' + k, JSON.stringify(v)); } catch (e) { /* pieno: pazienza */ } };
+const lsDelPrefix = () => { try { Object.keys(localStorage).filter(k => k.startsWith('dp:')).forEach(k => localStorage.removeItem(k)); } catch (e) { } };
+
+const DB = {
+  async mese(tab, prod, mk) {                       // tutte le giornate del mese → Map data → {dati, altre}
+    const ck = tab + '|' + prod + '|' + mk;
+    if (CACHE[ck]) return CACHE[ck];
+    let righe;
+    const corrente = mk >= meseKey(isoOggi());
+    if (DEMO) { const o = demoGet(tab) || {}; righe = Object.entries(o).filter(([k]) => k.startsWith(prod + '|' + mk)).map(([k, v]) => ({ data: k.split('|')[1], dati: v.dati, altre: v.altre || 0 })); }
+    else {
+      const loc = !corrente && lsGet(ck);
+      if (loc) righe = loc;
+      else {
+        const sel = tab === 'dp_lavaggi' ? 'data,dati,altre' : 'data,dati';
+        const r = ok(await sb.from(tab).select(sel).eq('prodotto', prod).gte('data', mk + '-01').lte('data', fineMese(mk)).order('data'));
+        righe = r.data; if (!corrente) lsSet(ck, righe);
+      }
+    }
+    const m = new Map(righe.map(x => [x.data, { dati: x.dati || [], altre: x.altre || 0 }]));
+    CACHE[ck] = m; return m;
+  },
+  async salva(tab, prod, data, dati, altre) {
+    const mk = meseKey(data), ck = tab + '|' + prod + '|' + mk;
+    const vuotoGiorno = !dati.length && !(altre > 0);
+    if (DEMO) {
+      const o = demoGet(tab) || {}, k = prod + '|' + data;
+      if (vuotoGiorno) delete o[k]; else o[k] = { dati, altre };
+      demoSet(tab, o);
+    } else if (vuotoGiorno) {
+      ok(await sb.from(tab).delete().eq('prodotto', prod).eq('data', data));
+    } else {
+      const riga = { prodotto: prod, data, dati, aggiornato_il: new Date().toISOString() };
+      if (tab === 'dp_lavaggi') riga.altre = altre || 0;
+      ok(await sb.from(tab).upsert(riga));
+    }
+    if (CACHE[ck]) { if (vuotoGiorno) CACHE[ck].delete(data); else CACHE[ck].set(data, { dati, altre: altre || 0 }); }
+    try { localStorage.removeItem('dp:' + ck); } catch (e) { }
+  },
+  async tutteImp() {
+    if (DEMO) return demoGet('imp') || {};
+    const r = ok(await sb.from('dp_impostazioni').select('chiave,valore')); const o = {}; r.data.forEach(x => o[x.chiave] = x.valore); return o;
+  },
+  async setImp(chiave, valore) {
+    IMP[chiave] = valore;
+    if (DEMO) { const o = demoGet('imp') || {}; o[chiave] = valore; demoSet('imp', o); return; }
+    ok(await sb.from('dp_impostazioni').upsert({ chiave, valore, aggiornato_il: new Date().toISOString() }));
+  },
+  async tuttiCodici() {
+    if (DEMO) return demoGet('codici') || [];
+    const r = ok(await sb.from('dp_codici').select('prodotto,matricola,codice')); return r.data;
+  },
+  async setCodice(prod, matricola, codice) {
+    CODICI[prod][matricola] = codice;
+    if (DEMO) { const l = (demoGet('codici') || []).filter(x => !(x.prodotto === prod && x.matricola === matricola)); l.push({ prodotto: prod, matricola, codice }); demoSet('codici', l); return; }
+    ok(await sb.from('dp_codici').upsert({ prodotto: prod, matricola, codice }));
+  },
+  async delCodice(prod, matricola) {
+    delete CODICI[prod][matricola];
+    if (DEMO) { demoSet('codici', (demoGet('codici') || []).filter(x => !(x.prodotto === prod && x.matricola === matricola))); return; }
+    ok(await sb.from('dp_codici').delete().eq('prodotto', prod).eq('matricola', matricola));
+  },
+  async registro(lotti) {                           // Registro lotti (stesso database)
+    if (!lotti.length) return [];
+    if (DEMO) { try { return JSON.parse(localStorage.getItem('lav_demo_registro') || '[]').filter(x => lotti.includes(x.lotto)); } catch (e) { return []; } }
+    const out = [];
+    for (const b of blocchi(lotti, 150)) { const r = ok(await sb.rpc('lav_lotti_registro', { p_lotti: b })); out.push(...r.data); }
+    return out;
+  },
+  async info(prod, lotti) {                         // media peso, matricola, mese/anno dai lavaggi (tutti gli anni)
+    if (!lotti.length) return [];
+    if (DEMO) {
+      const o = demoGet('dp_lavaggi') || {}, m = new Map();
+      Object.entries(o).filter(([k]) => k.startsWith(prod + '|')).forEach(([, v]) => (v.dati || []).forEach(r => {
+        if (!lotti.includes(r.lotto)) return;
+        const x = m.get(r.lotto) || { lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, s: [], n_righe: 0, n_forme: 0 };
+        if (num(r.forme)) x.s.push(num(r.sporco) / num(r.forme)); x.n_righe++; x.n_forme += num(r.forme); m.set(r.lotto, x);
+      }));
+      return [...m.values()].map(x => ({ ...x, media: x.s.length ? x.s.reduce((a, b) => a + b, 0) / x.s.length : null }));
+    }
+    const out = [];
+    for (const b of blocchi(lotti, 150)) { const r = ok(await sb.rpc('dp_lotti_info', { p_prodotto: prod, p_lotti: b })); out.push(...r.data); }
+    return out;
+  },
+  async lottiLavorazioni(prod, lotti, escludi) {
+    if (!lotti.length) return [];
+    if (DEMO) {
+      const o = demoGet('dp_giornate') || {}, out = [];
+      Object.entries(o).filter(([k]) => k.startsWith(prod + '|') && k.split('|')[1] !== escludi).forEach(([k, v]) => (v.dati || []).forEach(r => { if (lotti.includes(r.lotto)) out.push({ lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, data: k.split('|')[1], riga: r.n }); }));
+      return out;
+    }
+    const r = ok(await sb.rpc('dp_lotti_lavorazioni', { p_prodotto: prod, p_lotti: lotti, p_escludi: escludi }));
+    return r.data;
+  },
+  async tutto(tab, prod) {                          // per il backup (a pagine da 1000)
+    if (DEMO) { const o = demoGet(tab) || {}; return Object.entries(o).filter(([k]) => k.startsWith(prod + '|')).map(([k, v]) => ({ prodotto: prod, data: k.split('|')[1], ...v })); }
+    const out = [];
+    for (let i = 0; ; i += 1000) {
+      const r = ok(await sb.from(tab).select('*').eq('prodotto', prod).order('data').range(i, i + 999));
+      out.push(...r.data); if (r.data.length < 1000) break;
+    }
+    return out;
+  },
+  async scriviTutto(tab, righe) {
+    if (DEMO) { const o = demoGet(tab) || {}; righe.forEach(x => { o[x.prodotto + '|' + x.data] = { dati: x.dati, altre: x.altre || 0 }; }); demoSet(tab, o); return; }
+    for (const b of blocchi(righe, 50)) ok(await sb.from(tab).upsert(b.map(x => ({ prodotto: x.prodotto, data: x.data, dati: x.dati, ...(tab === 'dp_lavaggi' ? { altre: x.altre || 0 } : {}), aggiornato_il: x.aggiornato_il || new Date().toISOString() }))));
+  },
+};
+
+// ---------- registro lotti e info lavaggi (con cache) ----------
+const daRegistro = x => {                          // produzione "AGO-25" → mese 8, anno 2025
+  const m = String(x.produzione || '').toLowerCase().match(/^([a-z]{3})-?(\d{2})$/);
+  return { matr: normMatr(x.matricola), mese: m ? (MESI.indexOf(m[1]) + 1 || null) : null, anno: m ? 2000 + +m[2] : null, arrivo: x.data_arrivo, prodotto: x.prodotto || '' };
+};
+async function caricaRegistro(lotti) {
+  const nuovi = [...new Set(lotti.filter(l => RE_LOTTO.test(l) && !REG.has(l)))];
+  if (!nuovi.length) return;
+  try {
+    const r = await DB.registro(nuovi);
+    nuovi.forEach(l => REG.set(l, null));
+    r.forEach(x => { if (!REG.get(x.lotto)) REG.set(x.lotto, daRegistro(x)); });
+  } catch (e) { toast('Registro lotti non raggiungibile: ' + (e.message || e), true); }
+}
+async function caricaInfo(prod, lotti) {
+  const nuovi = [...new Set(lotti.filter(l => l && !INFO[prod].has(l)))];
+  if (!nuovi.length) return;
+  try {
+    const r = await DB.info(prod, nuovi);
+    nuovi.forEach(l => INFO[prod].set(l, null));
+    r.forEach(x => INFO[prod].set(x.lotto, { matr: normMatr(x.matr), mese: x.mese, anno: x.anno, media: x.media == null ? null : +x.media, n_righe: +x.n_righe, n_forme: +x.n_forme }));
+  } catch (e) { toast('Lettura lavaggi non riuscita: ' + (e.message || e), true); }
+}
+const infoLotto = (prod, l) => INFO[prod].get(l) || null;
+
+// ---------- calcoli ----------
+const par = () => PAR[S.prod];
+const codiceDi = (prod, r) => r.cod ? r.cod : (CODICI[prod][normMatr(r.matr)] || '');
+function stagionatura(dataIso, mese, anno) {
+  if (!dataIso || !mese || !anno) return null;
+  const d = new Date(+dataIso.slice(0, 4), +dataIso.slice(5, 7) - 1, +dataIso.slice(8, 10)); const ieri = new Date(d.getTime() - 86400000);
+  return (ieri.getFullYear() - anno) * 12 + (d.getMonth() + 1) - mese - 1;
+}
+function calcLavaggio(prod, r) {
+  const p = PAR[prod], f = num(r.forme), s = num(r.sporco);
+  return { medio: f ? s / f : null, pulito: s ? s - s * p.calo / 100 : null, codice: codiceDi(prod, r) };
+}
+function calcLavorazione(prod, dataIso, r) {
+  const p = PAR[prod], f = num(r.forme), inf = infoLotto(prod, r.lotto);
+  const kgf = !vuoto(r.kgf) ? num(r.kgf) : (inf && inf.media != null ? inf.media : null);
+  const o = { kgf, stag: stagionatura(dataIso, num(r.mese), num(r.anno)), errKgf: kgf == null };
+  if (!f) { Object.assign(o, { sporco: null, lavorati: null, segatura: null, pulitura: null, piall: null, croste: null, pf: null, sfridi: null }); if (prod === 'GP') Object.assign(o, { q: null, ab: null }); return o; }
+  const tl = r.linea === TL;
+  o.sporco = kgf == null ? null : mround(kgf * f);
+  o.lavorati = o.sporco == null ? null : mround(o.sporco - o.sporco * p.calo / 100);
+  o.segatura = f * p.segatura; o.pulitura = f * p.pulitura;
+  o.piall = tl ? f * p.piallatura : 0;
+  const g = grammi(normFormato(r.fmt));
+  o.crosteAuto = (!tl && g != null && g < p.limite_croste_g) ? f * p.croste : 0;
+  o.croste = !vuoto(r.croste) ? num(r.croste) : o.crosteAuto;
+  const polpa = num(r.polpa);
+  o.pf = o.lavorati == null ? null : o.lavorati - polpa - o.segatura - o.croste - o.pulitura - o.piall;
+  o.sfridi = polpa + o.croste + o.piall;
+  if (prod === 'GP') {
+    const auto = tl ? mround(polpa * p.piatti_pct / 100) : 0;
+    o.qAuto = auto; o.q = !vuoto(r.q) ? num(r.q) : auto; o.ab = polpa + o.q;
+  }
+  return o;
+}
+
+// ---------- interfaccia di base ----------
+function apriModal(html) { $('modal-card').innerHTML = html; $('modal').classList.add('show'); $('modal-card').querySelectorAll('[data-close]').forEach(b => b.onclick = chiudiModal); }
+function chiudiModal() { $('modal').classList.remove('show'); }
+function chiedi(tit, testo, si, no, pericolo) {
+  return new Promise(res => {
+    apriModal(`<h2>${tit}</h2><p>${testo}</p><div class="modal-btns">${no ? `<button class="btn ghost" id="m-no">${no}</button>` : ''}<button class="btn ${pericolo ? 'danger' : ''}" id="m-si">${si}</button></div>`);
+    $('m-si').onclick = () => { chiudiModal(); res(true); }; if (no) $('m-no').onclick = () => { chiudiModal(); res(false); };
+  });
+}
+let toastT; function toast(m, err) { const t = $('toast'); t.textContent = m; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 3800); }
+function scarica(blob, nome) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function stampaHTML(titolo, sub, tabellaHtml, orient) {
+  let st = document.getElementById('page-style'); if (!st) { st = document.createElement('style'); st.id = 'page-style'; document.head.appendChild(st); }
+  st.textContent = `@page{size:A4 ${orient || 'landscape'};margin:10mm;}`;
+  let pa = $('print-area'); if (!pa) { pa = document.createElement('div'); pa.id = 'print-area'; pa.className = 'printonly'; document.body.appendChild(pa); }
+  pa.innerHTML = `<h2>${esc(titolo)}</h2><div class="psub">${esc(sub || '')}</div>${tabellaHtml}`;
+  const t = document.title; document.title = titolo.replace(/[^\w\- ]+/g, '').trim() || 'Dati produttivi';
+  setTimeout(() => { window.print(); setTimeout(() => { document.title = t; }, 500); }, 60);
+}
+
+// ---------- file Excel: ZIP senza librerie esterne ----------
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function creaZip(files) {
+  const enc = new TextEncoder(), parti = [], centrale = []; let off = 0;
+  for (const [nome, testo] of files) {
+    const nb = enc.encode(nome), dati = enc.encode(testo), crc = crc32(dati);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, dati.length, true); h.setUint32(22, dati.length, true);
+    h.setUint16(26, nb.length, true); h.setUint16(28, 0, true);
+    parti.push(new Uint8Array(h.buffer), nb, dati);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, dati.length, true); c.setUint32(24, dati.length, true);
+    c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+    centrale.push(new Uint8Array(c.buffer), nb);
+    off += 30 + nb.length + dati.length;
+  }
+  const lenC = centrale.reduce((s, x) => s + x.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, lenC, true); e.setUint32(16, off, true);
+  return new Blob([...parti, ...centrale, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+const xmlEsc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function xlsxSemplice(fogli) {
+  const colL = n => { let s = ''; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const sheets = fogli.map(f => {
+    const rows = f.righe.map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => {
+      const ref = colL(ci) + (ri + 1); const b = (f.grassetto || []).includes(ri);
+      if (v == null || v === '') return '';
+      if (typeof v === 'number') return `<c r="${ref}" s="${b ? 3 : 2}"><v>${v}</v></c>`;
+      return `<c r="${ref}" s="${b ? 1 : 0}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    }).join('')}</row>`).join('');
+    const cols = (f.larghezze || []).map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${cols ? '<cols>' + cols + '</cols>' : ''}<sheetData>${rows}</sheetData></worksheet>`;
+  });
+  const files = [
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${fogli.map((f, i) => `<sheet name="${xmlEsc(f.nome.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${fogli.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${fogli.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`],
+    ...sheets.map((s, i) => [`xl/worksheets/sheet${i + 1}.xml`, s]),
+  ];
+  return creaZip(files);
+}
+// ====== Tabella di sola lettura: ordinamento, filtri stile Excel, selezione con somma, frecce, stampa, Excel ======
+const VUOTA = '(vuote)';
+function valTxt(c, v) {
+  if (v == null || v === '' || (typeof v === 'number' && isNaN(v))) return '';
+  if (c.t === 'kg') return fmtKg(v);
+  if (c.t === 'i') return fmtKg0(v);
+  if (c.t === 'd') return isoToIt(v);
+  return String(v);
+}
+const confrontaVal = (c, a, b) => {
+  const av = a[c.k], bv = b[c.k], ea = av == null || av === '', eb = bv == null || bv === '';
+  if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
+  if (c.t === 'kg' || c.t === 'i') return av - bv;
+  return confrontaTxt(av, bv);
+};
+
+function Tabella(cont, opt) {
+  const T = { cols: opt.cols, rows: opt.rows || [], filtri: {}, ord: opt.ord || null, sel: null, vis: [] };
+  const cols = T.cols;
+  const fire = () => { if (opt.onChange) opt.onChange(T); };
+
+  T.filtrate = (escludi) => T.rows.filter(r => cols.every(c => {
+    if (c.k === escludi) return true; const f = T.filtri[c.k]; if (!f) return true;
+    return f.has(valTxt(c, r[c.k]) || VUOTA);
+  }));
+  T.visibili = () => {
+    let v = T.filtrate();
+    if (T.ord) { const c = cols.find(x => x.k === T.ord.k); if (c) { const s = T.ord.dir; v = v.map((r, i) => [r, i]).sort((x, y) => s * confrontaVal(c, x[0], y[0]) || x[1] - y[1]).map(x => x[0]); } }
+    return v;
+  };
+  T.totali = (v) => { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; };
+
+  T.disegna = () => {
+    const v = T.vis = T.visibili(), tot = T.totali(v);
+    const th = cols.map((c, ci) => {
+      const f = T.filtri[c.k], o = T.ord && T.ord.k === c.k;
+      return `<th data-c="${ci}" class="${f || o ? 'on' : ''}" ${c.w ? `style="min-width:${c.w}px"` : ''}>${esc(c.l)}<span class="ar">${o ? (T.ord.dir > 0 ? '▲' : '▼') : ''}${f ? ' ⏷' : ''}</span></th>`;
+    }).join('');
+    let prevM = null;
+    const tb = v.map((r, ri) => {
+      let cls = '';
+      if (opt.sepMese && r.data) { const m = opt.sepMese === 'giorno' ? r.data : r.data.slice(0, 7); if (prevM && m !== prevM) cls = ' class="sepm"'; prevM = m; }
+      return `<tr${cls}>` + cols.map((c, ci) => {
+        const x = valTxt(c, r[c.k]);
+        const al = (c.t === 'kg' || c.t === 'i') ? 'r' : (c.t === 'd' || c.al === 'c') ? 'c' : '';
+        const neg = (c.t === 'kg' && r[c.k] < 0) ? ' style="color:var(--danger)"' : '';
+        const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
+        const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
+        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}>${esc(x)}</td>`;
+      }).join('') + '</tr>';
+    }).join('');
+    const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
+    cont.innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro" tabindex="0"><thead><tr>${th}</tr></thead><tbody>${tb || `<tr><td colspan="${cols.length}" class="empty">Nessun dato</td></tr>`}</tbody>${tf}</table></div>
+      <div class="legend" style="margin-top:8px"><span style="margin-right:12px">${v.length}${v.length !== T.rows.length ? ' di ' + T.rows.length : ''} righe</span><span style="color:var(--muted)">Clic sul titolo: ordina / filtra · trascina o usa le frecce (con Maiusc) per selezionare e vedere la somma</span></div>`;
+    T.tab = cont.querySelector('table');
+    T.tab.addEventListener('mousedown', onDown); T.tab.addEventListener('keydown', onKey);
+    T.tab.querySelectorAll('thead th').forEach(h => h.addEventListener('click', e => { e.stopPropagation(); apriFiltro(h); }));
+    T.tab.querySelectorAll('td[data-tip]').forEach(td => { td.addEventListener('mouseenter', e => mostraTip(e.target.dataset.tip, e, true)); td.addEventListener('mouseleave', nascondiTip); });
+    T.sel = null; nascondiSomma(); fire();
+  };
+  T.aggiorna = (rows) => { T.rows = rows; T.disegna(); };
+
+  // ---- selezione ----
+  const cella = (r, c) => T.tab && T.tab.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+  const nR = () => T.vis.length;
+  function selDisegna() {
+    T.tab.querySelectorAll('td.sel,td.cur').forEach(td => td.classList.remove('sel', 'cur'));
+    if (!T.sel) { nascondiSomma(); return; }
+    const { a, b } = T.sel, r1 = Math.min(a[0], b[0]), r2_ = Math.max(a[0], b[0]), c1 = Math.min(a[1], b[1]), c2 = Math.max(a[1], b[1]);
+    let somma = 0, n = 0, nn = 0;
+    for (let r = r1; r <= r2_; r++) for (let c = c1; c <= c2; c++) {
+      const td = cella(r, c); if (td) td.classList.add('sel');
+      const col = cols[c], v = T.vis[r] && T.vis[r][col.k];
+      n++; if ((col.t === 'kg' || col.t === 'i') && v != null && v !== '' && !isNaN(v)) { somma += +v; nn++; }
+    }
+    const cur = cella(b[0], b[1]); if (cur) { cur.classList.add('cur'); cur.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+    if (n > 1 || nn) mostraSomma(cur, n, nn, somma); else nascondiSomma();
+  }
+  let trascina = false;
+  function onDown(e) {
+    const td = e.target.closest('td[data-r]'); if (!td) return;
+    const p = [+td.dataset.r, +td.dataset.c];
+    if (e.shiftKey && T.sel) T.sel.b = p; else T.sel = { a: p, b: p };
+    trascina = true; selDisegna(); T.tab.focus({ preventScroll: true }); e.preventDefault();
+  }
+  const fineTrascina = () => { trascina = false; };
+  document.addEventListener('mouseup', fineTrascina);
+  cont.addEventListener('mouseover', e => {
+    if (!trascina || !(e.buttons & 1)) { trascina = false; return; }
+    const td = e.target.closest('td[data-r]'); if (!td || !T.sel) return;
+    T.sel.b = [+td.dataset.r, +td.dataset.c]; selDisegna();
+  });
+  function onKey(e) {
+    const k = e.key; const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[k];
+    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'a') { T.sel = { a: [0, 0], b: [nR() - 1, cols.length - 1] }; selDisegna(); e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'c' && T.sel) {
+      const { a, b } = T.sel, out = [];
+      for (let r = Math.min(a[0], b[0]); r <= Math.max(a[0], b[0]); r++) { const rr = []; for (let c = Math.min(a[1], b[1]); c <= Math.max(a[1], b[1]); c++) rr.push(valTxt(cols[c], T.vis[r][cols[c].k])); out.push(rr.join('\t')); }
+      navigator.clipboard && navigator.clipboard.writeText(out.join('\n')); toast('Copiato'); e.preventDefault(); return;
+    }
+    if (k === 'Escape') { T.sel = null; selDisegna(); return; }
+    if (!mv) return; e.preventDefault();
+    if (!T.sel) { T.sel = { a: [0, 0], b: [0, 0] }; selDisegna(); return; }
+    const b = T.sel.b, nb = [Math.max(0, Math.min(nR() - 1, b[0] + mv[0])), Math.max(0, Math.min(cols.length - 1, b[1] + mv[1]))];
+    if (e.shiftKey) T.sel.b = nb; else T.sel = { a: nb, b: nb };
+    selDisegna();
+  }
+
+  // ---- filtro stile Excel ----
+  function apriFiltro(th) {
+    chiudiFiltroPop();
+    const ci = +th.dataset.c, c = cols[ci], base = T.filtrate(c.k), conta = new Map();
+    base.forEach(r => { const v = valTxt(c, r[c.k]) || VUOTA; conta.set(v, (conta.get(v) || 0) + 1); });
+    const ordine = base.slice().sort((x, y) => confrontaVal(c, x, y)), visti = new Set(), valori = [];
+    ordine.forEach(r => { const v = valTxt(c, r[c.k]) || VUOTA; if (!visti.has(v)) { visti.add(v); valori.push(v); } });
+    const att = T.filtri[c.k], scelti = new Set(att ? [...att] : valori);
+    const pop = document.createElement('div'); pop.className = 'filtro-pop'; pop.id = 'filtro-pop';
+    pop.innerHTML = `<div class="fp-tit">${esc(c.l)}</div>
+      <button class="fp-op" data-o="asc">↑ Ordina dal più piccolo al più grande</button>
+      <button class="fp-op" data-o="desc">↓ Ordina dal più grande al più piccolo</button>
+      <button class="fp-op" data-o="no">Rimuovi ordinamento</button>
+      <input class="fp-cerca" placeholder="Cerca…">
+      <div class="fp-lista"></div>
+      <div class="fp-btn"><button class="btn sm" data-o="ok">OK</button><button class="btn sm ghost" data-o="canc">Annulla</button><button class="btn sm ghost" data-o="clear" style="margin-left:auto">Cancella filtro</button></div>`;
+    document.body.appendChild(pop);
+    const rc = th.getBoundingClientRect(); pop.style.left = Math.min(rc.left + scrollX, innerWidth - 290 + scrollX) + 'px'; pop.style.top = (rc.bottom + scrollY + 2) + 'px';
+    const lista = pop.querySelector('.fp-lista'), cerca = pop.querySelector('.fp-cerca');
+    const disegnaLista = () => {
+      const q = cerca.value.trim().toLowerCase(), vv = valori.filter(v => !q || v.toLowerCase().includes(q));
+      lista.innerHTML = `<label class="fp-v fp-tutti"><input type="checkbox" data-t="1" ${vv.every(v => scelti.has(v)) ? 'checked' : ''}> (Seleziona tutto)</label>` +
+        vv.map(v => `<label class="fp-v"><input type="checkbox" data-v="${esc(v)}" ${scelti.has(v) ? 'checked' : ''}> ${esc(v)}<i>${conta.get(v)}</i></label>`).join('');
+    };
+    disegnaLista(); cerca.focus();
+    cerca.addEventListener('input', () => {                           // come Excel: la ricerca seleziona solo i valori trovati
+      const q = cerca.value.trim().toLowerCase(); scelti.clear(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => scelti.add(v)); disegnaLista();
+    });
+    lista.addEventListener('change', e => {
+      const i = e.target; if (i.dataset.t) { const q = cerca.value.trim().toLowerCase(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => i.checked ? scelti.add(v) : scelti.delete(v)); }
+      else i.checked ? scelti.add(i.dataset.v) : scelti.delete(i.dataset.v);
+      disegnaLista();
+    });
+    pop.addEventListener('click', e => {
+      const o = e.target.dataset.o; if (!o) return;
+      if (o === 'asc' || o === 'desc') { T.ord = { k: c.k, dir: o === 'asc' ? 1 : -1 }; chiudiFiltroPop(); T.disegna(); }
+      else if (o === 'no') { T.ord = null; chiudiFiltroPop(); T.disegna(); }
+      else if (o === 'clear') { delete T.filtri[c.k]; chiudiFiltroPop(); T.disegna(); }
+      else if (o === 'canc') chiudiFiltroPop();
+      else if (o === 'ok') { if (valori.every(v => scelti.has(v))) delete T.filtri[c.k]; else T.filtri[c.k] = new Set(scelti); chiudiFiltroPop(); T.disegna(); }
+    });
+    pop.addEventListener('mousedown', e => e.stopPropagation());
+  }
+  T.disegna();
+  return T;
+}
+function chiudiFiltroPop() { const p = $('filtro-pop'); if (p) p.remove(); }
+document.addEventListener('mousedown', e => { if (!e.target.closest('#filtro-pop')) chiudiFiltroPop(); });
+
+function mostraSomma(td, n, nn, somma) {
+  const b = $('selsum'); if (!td) return;
+  b.innerHTML = `${n} celle${nn ? ` · <b>${fmtKg(somma)}</b><span>media ${fmtKg(somma / nn)} · ${nn} numeri</span>` : ''}`;
+  b.hidden = false; const r = td.getBoundingClientRect();
+  b.style.left = Math.min(Math.max(8, r.left), innerWidth - 300) + 'px'; b.style.top = Math.min(innerHeight - 40, r.bottom + 6) + 'px';
+}
+function nascondiSomma() { $('selsum').hidden = true; }
+function mostraTip(t, e, warn) {
+  const tip = $('tip'); tip.textContent = t; tip.className = 'tip' + (warn ? ' w' : ''); tip.hidden = false;
+  const r = e.target.getBoundingClientRect(); tip.style.left = Math.min(r.left, innerWidth - 340) + 'px'; tip.style.top = (r.bottom + 4) + 'px';
+}
+function nascondiTip() { $('tip').hidden = true; }
+
+// ---- esportazione / stampa di una tabella (con la formattazione dei file attuali) ----
+function righeExport(T, intest) {
+  const v = T.vis, tot = T.totali(v), cols = T.cols;
+  const righe = [cols.map(c => c.l)];
+  v.forEach(r => righe.push(cols.map(c => { const x = r[c.k]; if (x == null || x === '' || (typeof x === 'number' && isNaN(x))) return ''; if (c.t === 'kg' || c.t === 'i') return +x; if (c.t === 'd') return isoToIt(x); return String(x); })));
+  if (cols.some(c => c.tot)) righe.push(cols.map((c, i) => i === 0 ? 'TOTALE' : c.tot ? tot[c.k] : ''));
+  return righe;
+}
+function esportaTabella(T, nome, titolo) {
+  const righe = righeExport(T), tot = T.cols.some(c => c.tot);
+  const g = [0]; if (tot) g.push(righe.length - 1);
+  scarica(xlsxSemplice([{ nome: (titolo || 'Dati').slice(0, 31), righe, grassetto: g, larghezze: T.cols.map(c => Math.max(10, Math.round((c.w || 80) / 6))) }]), nome + '.xlsx');
+}
+function stampaTabella(T, titolo, sub, orient) {
+  const v = T.vis, tot = T.totali(v), cols = T.cols;
+  const th = cols.map(c => `<th>${esc(c.l)}</th>`).join('');
+  const tb = v.map(r => '<tr>' + cols.map(c => `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('') + '</tr>').join('');
+  const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === 0 ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
+  stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient);
+}
+const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghost sm" data-x="stampa">Stampa / PDF</button><button class="btn ghost sm" data-x="xlsx">Esporta Excel</button></span>`;
+// ====== Fogli giornalieri modificabili: Lavaggi e Lavorazioni ======
+const CUR = { tipo: null, data: null, righe: [], altre: 0, dirty: false, esiste: false };
+const V = { lavaggi: 'giorno', lavorazioni: 'giorno' };        // vista: giorno | elenco
+const MESE_SEL = { lavaggi: meseKey(isoOggi()), lavorazioni: meseKey(isoOggi()) };
+const DATA_SEL = { lavaggi: isoOggi(), lavorazioni: isoOggi() };
+
+const TIPI = {
+  lavaggi: { tab: 'dp_lavaggi', nome: 'Lavaggi', vuota: () => ({ lotto: '', matr: '', mese: '', anno: '', forme: '', sporco: '' }) },
+  lavorazioni: { tab: 'dp_giornate', nome: 'Lavorazioni', vuota: () => ({ lotto: '', matr: '', mese: '', anno: '', forme: '', fmt: '', polpa: '', linea: '' }) },
+};
+
+// definizione colonne del foglio giornaliero.  t: tipo di campo · c: calcolata (funzione) · tot: somma nel piede
+function colsGiorno(tipo) {
+  const gp = S.prod === 'GP';
+  if (tipo === 'lavaggi') return [
+    { k: 'lotto', l: 'Lotto', t: 'lotto', w: 92, g: 'mp' },
+    { k: 'matr', l: 'Matricola', t: 'matr', w: 78, g: 'mp' },
+    { k: 'mese', l: 'Mese', t: 'mese', w: 48, g: 'mp' },
+    { k: 'anno', l: 'Anno', t: 'anno', w: 56, g: 'mp' },
+    { k: 'forme', l: 'Forme', t: 'int', w: 62, tot: 1, g: 'mp' },
+    { k: 'sporco', l: 'Pallet sporco (kg)', t: 'kg', w: 100, tot: 1, g: 'mp' },
+    { k: 'medio', l: 'Peso medio', c: x => x.medio, t: 'kg', w: 78 },
+    { k: 'pulito', l: 'Pallet pulito (kg)', c: x => x.pulito, t: 'kg', w: 100, tot: 1 },
+    { k: 'cod', l: 'Codice articolo', t: 'cod', w: 130 },
+  ];
+  const c = [
+    { k: 'n', l: 'Riga', t: 'riga', w: 52 },
+    { k: 'lotto', l: 'Lotto', t: 'lotto', w: 92, g: 'mp' },
+    { k: 'matr', l: 'Matricola', t: 'matr', w: 78, g: 'mp' },
+    { k: 'mese', l: 'Mese', t: 'mese', w: 48, g: 'mp' },
+    { k: 'anno', l: 'Anno', t: 'anno', w: 56, g: 'mp' },
+    { k: 'forme', l: 'Forme', t: 'int', w: 62, tot: 1, g: 'mp' },
+    { k: 'kgf', l: 'Kg forma', t: 'kgf', c: x => x.kgf, w: 76 },
+    { k: 'stag', l: 'Stag.', c: x => x.stag, t: 'i', w: 52, s: 1 },
+    { k: 'sporco', l: 'Pallet sporco', c: x => x.sporco, t: 'kg', w: 92, tot: 1 },
+    { k: 'lavorati', l: 'Kg lavorati', c: x => x.lavorati, t: 'kg', w: 92, tot: 1 },
+    { k: 'fmt', l: 'Formato', t: 'fmt', w: 76 },
+    { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 92, tot: 1 },
+    { k: 'segatura', l: 'Segatura (cat.3)', c: x => x.segatura, t: 'kg', w: 86, tot: 1 },
+    { k: 'croste', l: 'Croste', t: 'ov', c: x => x.croste, w: 76, tot: 1 },
+    { k: 'pulitura', l: 'Puliture a perdere', c: x => x.pulitura, t: 'kg', w: 86, tot: 1 },
+    { k: 'piall', l: 'Piallatura taglio liscio', c: x => x.piall, t: 'kg', w: 92, tot: 1 },
+  ];
+  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'ov', c: x => x.q, w: 84, tot: 1 }, { k: 'marchio', l: 'Marchio', t: 'txt', w: 100 });
+  c.push({ k: 'linea', l: 'Linea', t: 'linea', w: 112 },
+    { k: 'pf', l: 'Prodotto finito', c: x => x.pf, t: 'kg', w: 100, tot: 1, pf: 1 },
+    { k: 'sfridi', l: 'Sfridi totali', c: x => x.sfridi, t: 'kg', w: 92, tot: 1, pf: 1 });
+  if (gp) c.push({ k: 'ab', l: 'Polpa + piatti', c: x => x.ab, t: 'kg', w: 92, tot: 1 });
+  return c;
+}
+const calcRiga = (tipo, r, data) => tipo === 'lavaggi' ? calcLavaggio(S.prod, r) : calcLavorazione(S.prod, data, r);
+
+// ---- valore mostrato nelle celle ----
+function mostra(t, v, r, k) {
+  if (v == null || v === '' || (typeof v === 'number' && isNaN(v))) return '';
+  if (t === 'kg' || t === 'ov' || t === 'kgf') return fmtKg(v);
+  return String(v);
+}
+function norm(t, raw, riga, k) {                       // → {v} oppure {err}
+  const s = String(raw ?? '').trim();
+  switch (t) {
+    case 'lotto': return { v: s.toUpperCase().replace(/\s+/g, '') };
+    case 'matr': return { v: normMatr(s) };
+    case 'mese': {
+      if (!s) return { v: '' }; let m = MESI.indexOf(s.toLowerCase().slice(0, 3)) + 1; if (!m) m = parseInt(s, 10);
+      return m >= 1 && m <= 12 ? { v: m } : { err: 'Mese da 1 a 12' };
+    }
+    case 'anno': {
+      if (!s) return { v: '' }; let a = parseInt(s, 10); if (a < 100) a += 2000;
+      return a >= 2000 && a <= 2100 ? { v: a } : { err: 'Anno non valido' };
+    }
+    case 'int': { if (!s) return { v: '' }; const n = parseNum(s); return n != null && !isNaN(n) && n >= 0 && Math.round(n) === n ? { v: n } : { err: 'Numero intero (puoi scrivere anche somme: 12+24)' }; }
+    case 'kg': case 'ov': case 'kgf': {
+      if (!s) return { v: '' }; const n = parseNum(s); if (n == null || isNaN(n)) return { err: 'Numero non valido (somme: =100+50)' };
+      const fx = /^=|\+/.test(s) ? s : ''; return { v: n, fx };
+    }
+    case 'fmt': return { v: normFormato(s) };
+    case 'linea': { const u = s.toUpperCase(); return { v: LINEE[u] || u }; }
+    case 'cod': return { v: s.toUpperCase() };
+    case 'txt': return { v: s };
+  }
+  return { v: s };
+}
+
+// ---- controlli: rossi (errori) e gialli (avvisi), non bloccanti ----
+function controlli(tipo, i) {
+  const r = CUR.righe[i], o = {}, p = par(), E = (k, m) => { if (!o[k]) o[k] = { lv: 'e', m }; }, W = (k, m) => { if (!o[k]) o[k] = { lv: 'w', m }; };
+  const attiva = r.lotto || r.forme || r.sporco || r.polpa || r.fmt || r.linea;
+  if (!attiva) return o;
+  if (!r.lotto) E('lotto', 'Lotto mancante'); else if (!RE_LOTTO.test(r.lotto)) E('lotto', 'Lotto non valido (es. 26P123 oppure P1792)');
+  const reg = REG.get(r.lotto), info = tipo === 'lavorazioni' ? infoLotto(S.prod, r.lotto) : null;
+  const manuale = RE_LOTTO.test(r.lotto || '') && !reg && !info && REG.has(r.lotto);
+  ['matr', 'mese', 'anno'].forEach(k => {
+    if (vuoto(r[k])) E(k, k === 'matr' ? 'Matricola mancante' : k === 'mese' ? 'Mese mancante' : 'Anno mancante');
+    else if (manuale) o[k] = { lv: 'r', m: 'Lotto non trovato nel Registro lotti: dato inserito a mano' };
+  });
+  // stesso lotto con dati diversi nella giornata
+  const comb = x => normMatr(x.matr) + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
+  if (r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
+    E('matr', 'Lo stesso lotto ha matricola o mese/anno diversi in un\'altra riga');
+  if (reg && !vuoto(r.matr) && !vuoto(r.mese) && comb(r) !== normMatr(reg.matr) + '|' + (reg.mese ?? '') + '|' + (reg.anno ?? ''))
+    W('matr', `Diverso dal Registro lotti (${reg.matr} ${reg.mese}/${reg.anno})`);
+  if (reg && reg.prodotto && S.prod === 'GP' && /parmig/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Parmigiano Reggiano');
+  if (reg && reg.prodotto && S.prod === 'PR' && /grana/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Grana Padano');
+  if (vuoto(r.forme) || num(r.forme) <= 0) E('forme', 'Numero forme mancante');
+  const c = calcRiga(tipo, r, CUR.data);
+  if (tipo === 'lavaggi') {
+    if (vuoto(r.sporco) || num(r.sporco) <= 0) E('sporco', 'Peso del pallet sporco mancante');
+    else if (c.medio != null) {
+      if (c.medio < p.peso_min) W('sporco', `Peso medio ${fmtKg(c.medio)} kg: sotto ${p.peso_min} kg`);
+      else if (c.medio > p.peso_max) W('sporco', `Peso medio ${fmtKg(c.medio)} kg: sopra ${p.peso_max} kg`);
+    }
+    if (!c.codice && r.matr) W('cod', 'Codice articolo mancante per questa matricola (aggiungilo in Codici articolo o scrivilo qui)');
+  } else {
+    if (c.kgf == null) E('kgf', 'Nessun lavaggio per questo lotto: inserisci prima i lavaggi (oppure scrivi tu i kg per forma)');
+    else if (c.kgf < p.peso_min - 4 || c.kgf > p.peso_max) W('kgf', `Kg per forma ${fmtKg(c.kgf)} insoliti`);
+    if (vuoto(r.fmt)) E('fmt', 'Formato mancante'); else if (!formatoOk(normFormato(r.fmt))) W('fmt', 'Formato non riconosciuto: croste non calcolate');
+    if (vuoto(r.linea)) E('linea', 'Linea mancante (S, F oppure T)'); else if (!LINEE_OK.includes(r.linea)) W('linea', 'Linea non riconosciuta');
+    if (vuoto(r.polpa)) W('polpa', 'Polpa non inserita (da segnare sempre, anche con 0)');
+    if (c.stag != null && (c.stag < 0 || c.stag > 80)) W('stag', `Stagionatura ${c.stag} mesi: controlla mese/anno`);
+    if (c.pf != null && c.pf < 0) W('pf', 'Prodotto finito negativo: controlla polpa e forme');
+  }
+  return o;
+}
+
+// ---- disegno del foglio ----
+const RIGHE_MIN = 8;
+function inpAttr(c) { return `data-t="${c.t}" ${c.t === 'int' || c.t === 'kg' || c.t === 'ov' || c.t === 'kgf' || c.t === 'anno' || c.t === 'mese' ? 'inputmode="decimal"' : ''} autocomplete="off" spellcheck="false"`; }
+function celleRiga(tipo, i, cols) {
+  const r = CUR.righe[i], cc = calcRiga(tipo, r, CUR.data), ctl = controlli(tipo, i);
+  let h = `<td class="n">${i + 1}</td>`;
+  cols.forEach((c, ci) => {
+    const k = c.k, m = ctl[k] || (c.pf && ctl.pf && k === 'pf' ? ctl.pf : null);
+    const cls = (m ? (m.lv === 'e' ? 'err' : m.lv === 'w' ? 'warn' : 'rosso') : '') + (c.pf ? ' pf' : c.g === 'mp' ? ' mp' : '');
+    const tip = m ? ` data-msg="${esc(m.m)}" data-lv="${m.lv}"` : '';
+    const editabile = !c.c || c.t === 'kgf' || c.t === 'ov';
+    if (c.t === 'riga') { h += `<td class="ro c" data-i="${i}" data-c="${ci}" data-v="">${r.n || ''}</td>`; return; }
+    if (editabile && c.t !== 'cod') {
+      let v = r[k];
+      if (c.t === 'kgf') v = !vuoto(r.kgf) ? r.kgf : cc.kgf; else if (c.t === 'ov') v = cc[k];
+      const manuale = (c.t === 'kgf' && !vuoto(r.kgf)) || (c.t === 'ov' && !vuoto(r[k])) ? ' edited' : '';
+      const num_ = (c.t === 'int' || c.t === 'kg' || c.t === 'ov' || c.t === 'kgf') ? ` data-v="${v ?? ''}"` : '';
+      const txt = (r.fx && r.fx[k]) ? '' : mostra(c.t, v);
+      h += `<td data-i="${i}" data-c="${ci}" data-f="${k}" class="${cls}${manuale}${c.t === 'kg' || c.t === 'int' || c.t === 'ov' || c.t === 'kgf' ? ' r' : c.t === 'mese' || c.t === 'anno' ? ' c' : ''}"${tip}${num_}><input ${inpAttr(c)} value="${esc(txt || mostra(c.t, v))}"></td>`;
+    } else if (c.t === 'cod') {
+      const v = cc.codice, manuale = r.cod ? ' edited' : '';
+      h += `<td data-i="${i}" data-c="${ci}" data-f="cod" class="${cls}${manuale}"${tip}><input ${inpAttr(c)} value="${esc(v)}"></td>`;
+    } else {
+      const v = c.c(cc), neg = typeof v === 'number' && v < 0 ? ' neg' : '';
+      h += `<td class="ro${c.t === 'kg' || c.t === 'i' ? '' : ' l'} calc ${cls}${neg}" data-i="${i}" data-c="${ci}" data-k="${k}" data-v="${v ?? ''}"${tip}>${c.t === 'i' ? (v == null ? '' : v) : fmtKg(v)}</td>`;
+    }
+  });
+  return h + `<td style="width:34px"><button class="del" data-del="${i}" title="Elimina riga">✕</button></td>`;
+}
+function totaliGiorno(tipo, cols) {
+  const t = {}; cols.forEach(c => { if (c.tot) t[c.k] = 0; });
+  CUR.righe.forEach(r => { const cc = calcRiga(tipo, r, CUR.data); cols.forEach(c => { if (!c.tot) return; const v = c.c ? c.c(cc) : r[c.k]; if (v != null && v !== '' && !isNaN(v)) t[c.k] += +v; }); });
+  return t;
+}
+function disegnaFoglio() {
+  const tipo = CUR.tipo, cols = colsGiorno(tipo), box = $('foglio');
+  if (!box) return;
+  while (CUR.righe.length < RIGHE_MIN) CUR.righe.push(TIPI[tipo].vuota());
+  const th = cols.map(c => `<th ${c.w ? `style="min-width:${c.w}px"` : ''}>${esc(c.l)}</th>`).join('');
+  const body = CUR.righe.map((r, i) => `<tr data-i="${i}">${celleRiga(tipo, i, cols)}</tr>`).join('');
+  box.innerHTML = `<div class="sheet-wrap"><table class="sheet" id="foglio-t"><thead><tr><th style="width:38px">#</th>${th}<th></th></tr></thead><tbody>${body}</tbody><tfoot id="foglio-f"></tfoot></table></div>
+    <div class="addrow"><button class="btn ghost sm" id="btn-riga">+ Aggiungi riga</button><span class="note">Frecce per spostarti · Invio scende · le celle numeriche accettano somme (es. 12+24+79) · gialle e rosse sono solo avvisi: puoi salvare comunque.</span></div>
+    <div class="legend"><span class="le">Errore</span><span class="lw">Avviso</span><span class="lr">Dato inserito a mano (lotto non nel registro)</span></div>`;
+  aggiornaPiede();
+}
+function aggiornaPiede() {
+  const tipo = CUR.tipo, cols = colsGiorno(tipo), t = totaliGiorno(tipo, cols), f = $('foglio-f'); if (!f) return;
+  f.innerHTML = '<tr><td class="lbl">Σ</td>' + cols.map((c, ci) => ci === 0 ? '<td class="lbl">Totale giornata</td>' : c.tot ? `<td>${c.t === 'int' ? fmtKg0(t[c.k]) : fmtKg(t[c.k])}</td>` : '<td></td>').join('') + '<td></td></tr>';
+}
+let FOCUS_NEXT = null;
+function aggiornaRiga(i) {                              // ricalcola celle calcolate, errori e piede (senza perdere il cursore)
+  const tipo = CUR.tipo, cols = colsGiorno(tipo), tr = document.querySelector(`#foglio-t tbody tr[data-i="${i}"]`); if (!tr) return;
+  const att = document.activeElement;
+  const nuovo = document.createElement('tbody'); nuovo.innerHTML = `<tr>${celleRiga(tipo, i, cols)}</tr>`;
+  const nt = nuovo.firstChild;
+  [...tr.children].forEach((td, j) => {
+    const nu = nt.children[j]; if (!nu) return;
+    const inp = td.querySelector('input'), ni = nu.querySelector('input');
+    td.className = nu.className; ['msg', 'lv', 'v'].forEach(a => { if (nu.dataset[a] != null) td.dataset[a] = nu.dataset[a]; else delete td.dataset[a]; });
+    if (inp && ni) { if (inp !== att && inp !== FOCUS_NEXT && inp.value !== ni.value) inp.value = ni.value; }
+    else if (!inp) td.innerHTML = nu.innerHTML;
+  });
+  aggiornaPiede();
+}
+// i calcoli di tutte le righe dipendono da media lotti: ridisegna tutto dopo caricamenti
+function aggiornaTutteRighe() { CUR.righe.forEach((_, i) => aggiornaRiga(i)); }
+
+function segnaModifica() { CUR.dirty = true; aggiornaStato(); }
+function aggiornaStato() {
+  const s = $('g-stato'); if (!s) return;
+  if (CUR.dirty) { s.className = 'stato mod'; s.textContent = 'Modifiche non salvate'; }
+  else if (CUR.esiste) { s.className = 'stato ok'; s.textContent = 'Salvata'; }
+  else { s.className = 'stato new'; s.textContent = 'Nuova'; }
+}
+
+// ---- lotto: compilazione automatica di matricola, mese e anno ----
+async function compilaDaLotto(i, l) {
+  if (!RE_LOTTO.test(l)) return;
+  const tipo = CUR.tipo, data = CUR.data;
+  await caricaRegistro([l]); if (tipo === 'lavorazioni') await caricaInfo(S.prod, [l]);
+  if (CUR.tipo !== tipo || CUR.data !== data) return;
+  const r = CUR.righe[i]; if (!r || r.lotto !== l) { aggiornaTutteRighe(); return; }
+  const reg = REG.get(l), inf = tipo === 'lavorazioni' ? infoLotto(S.prod, l) : null;
+  const d = inf && inf.matr ? { matr: inf.matr, mese: inf.mese, anno: inf.anno, da: 'lavaggi' } : reg ? { matr: reg.matr, mese: reg.mese, anno: reg.anno, da: 'registro' } : null;
+  if (d) {
+    let cambiati = 0;
+    ['matr', 'mese', 'anno'].forEach(f => { if (!vuoto(d[f]) && r[f] !== d[f]) { r[f] = d[f]; cambiati++; } });
+    if (cambiati) { segnaModifica(); toast(`${l}: matricola ${d.matr}, ${String(d.mese).padStart(2, '0')}/${d.anno} dal ${d.da === 'registro' ? 'Registro lotti' : 'lavaggi'}`); }
+  } else toast(`${l}: non trovato nel Registro lotti${tipo === 'lavorazioni' ? ' e nei lavaggi' : ''}: scrivi matricola e mese/anno a mano`, true);
+  disegnaFoglioMantieniFocus(i);
+}
+function disegnaFoglioMantieniFocus(i) {
+  // aggiorna i valori degli input della riga e ricalcola tutto
+  const tipo = CUR.tipo, cols = colsGiorno(tipo), att = document.activeElement;
+  const fAtt = att && att.tagName === 'INPUT' ? att.closest('td').dataset : null;
+  const tr = document.querySelector(`#foglio-t tbody tr[data-i="${i}"]`); if (!tr) return;
+  cols.forEach((c, ci) => {
+    const td = tr.querySelector(`td[data-f="${c.k}"]`); if (!td || (fAtt && td.contains(att))) return;
+    const inp = td.querySelector('input'); if (inp) { const r = CUR.righe[i]; inp.value = c.t === 'cod' ? calcRiga(tipo, r, CUR.data).codice : mostra(c.t, r[c.k]); }
+  });
+  aggiornaTutteRighe();
+}
+
+// ---- modifica di una cella ----
+function commitCella(inp) {
+  const td = inp.closest('td'), i = +td.dataset.i, k = td.dataset.f, tipo = CUR.tipo, c = colsGiorno(tipo).find(x => x.k === k), r = CUR.righe[i];
+  if (!r || !c) return;
+  if (inp.dataset.orig !== undefined && inp.value === inp.dataset.orig) {          // nessuna modifica: ripristina solo la visualizzazione
+    delete inp.dataset.orig; const cc = calcRiga(tipo, r, CUR.data);
+    inp.value = c.t === 'cod' ? cc.codice : (c.t === 'kgf' || c.t === 'ov') ? mostra(c.t, c.t === 'kgf' ? (!vuoto(r.kgf) ? r.kgf : cc.kgf) : cc[k]) : mostra(c.t, r[k]);
+    return;
+  }
+  delete inp.dataset.orig;
+  const prima = JSON.stringify(r);
+  const raw = inp.value;
+  let n = norm(c.t, raw, r, k);
+  if (n.err) { toast(n.err, true); inp.value = mostra(c.t, r[k]); return; }
+  r.fx = r.fx || {};
+  if (c.t === 'cod') {
+    const def = CODICI[S.prod][normMatr(r.matr)] || ''; if (n.v && n.v !== def) r.cod = n.v; else delete r.cod;
+    inp.value = calcRiga(tipo, r, CUR.data).codice;
+  } else if (c.t === 'kgf') {
+    if (n.v === '' || n.v === calcLavorazione(S.prod, CUR.data, { ...r, kgf: '' }).kgf) delete r.kgf; else r.kgf = n.v;
+    if (n.fx && !vuoto(r.kgf)) r.fx.kgf = n.fx; else delete r.fx.kgf;
+    inp.value = mostra('kgf', calcLavorazione(S.prod, CUR.data, r).kgf);
+  } else if (c.t === 'ov') {
+    const auto = calcLavorazione(S.prod, CUR.data, { ...r, [k]: '' })[k];
+    if (n.v === '' || n.v === auto) delete r[k]; else r[k] = n.v;
+    if (n.fx && !vuoto(r[k])) r.fx[k] = n.fx; else delete r.fx[k];
+    inp.value = mostra('ov', calcLavorazione(S.prod, CUR.data, r)[k]);
+  } else {
+    if (!(n.v === '' && r[k] === undefined)) r[k] = n.v;
+    if (n.fx) r.fx[k] = n.fx; else delete r.fx[k];
+    inp.value = mostra(c.t, n.v);
+  }
+  if (!Object.keys(r.fx).length) delete r.fx;
+  td.dataset.v = inp.value ? (parseNum(inp.value) ?? '') : '';
+  const dopo = JSON.stringify(r);
+  if (prima !== dopo) segnaModifica();
+  if (k === 'lotto' && prima !== dopo) compilaDaLotto(i, r.lotto);
+  if (k === 'matr' && tipo === 'lavaggi') { /* il codice dipende dalla matricola */ }
+  aggiornaTutteRighe();
+}
+
+// ---- eventi del foglio ----
+function eventiFoglio(box) {
+  box.addEventListener('focusin', e => {
+    const inp = e.target; if (inp.tagName !== 'INPUT') return;
+    const td = inp.closest('td'), i = +td.dataset.i, k = td.dataset.f, r = CUR.righe[i];
+    document.querySelectorAll('#foglio-t tr.attiva').forEach(x => x.classList.remove('attiva'));
+    td.parentElement.classList.add('attiva');
+    if (r && r.fx && r.fx[k]) inp.value = r.fx[k];                         // mostra la somma scritta
+    else { const c = colsGiorno(CUR.tipo).find(x => x.k === k); if (c && (c.t === 'kg' || c.t === 'ov' || c.t === 'kgf') && inp.value) inp.value = inp.value.replace(/\./g, ''); }
+    inp.dataset.orig = inp.value;
+    setTimeout(() => inp.select(), 0);
+    chiudiSelezioneFoglio();
+  });
+  box.addEventListener('focusout', e => { if (e.target.tagName === 'INPUT') { FOCUS_NEXT = e.relatedTarget; commitCella(e.target); FOCUS_NEXT = null; } });
+  box.addEventListener('keydown', e => {
+    const inp = e.target; if (inp.tagName !== 'INPUT') { if (e.key === 'Escape') chiudiSelezioneFoglio(); return; }
+    const td = inp.closest('td'), i = +td.dataset.i, ci = +td.dataset.c, k = e.key;
+    const muovi = (di, dc) => {
+      let ni = i + di, nc = ci + dc;
+      if (ni < 0) return; if (ni >= CUR.righe.length) { commitCella(inp); CUR.righe.push(TIPI[CUR.tipo].vuota()); disegnaFoglio(); }
+      const cols = colsGiorno(CUR.tipo);
+      let guard = 0;
+      while (guard++ < 30) {
+        const t2 = document.querySelector(`#foglio-t td[data-i="${ni}"][data-c="${nc}"]`);
+        if (!t2) return; const in2 = t2.querySelector('input');
+        if (in2) { in2.focus(); return; }
+        if (dc === 0) return; nc += dc; if (nc < 0 || nc >= cols.length) return;
+      }
+    };
+    if (k === 'ArrowDown') { e.preventDefault(); muovi(1, 0); }
+    else if (k === 'ArrowUp') { e.preventDefault(); muovi(-1, 0); }
+    else if (k === 'Enter') { e.preventDefault(); muovi(1, 0); }
+    else if (k === 'ArrowRight' && (inp.selectionStart === inp.value.length || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, 1); }
+    else if (k === 'ArrowLeft' && (inp.selectionEnd === 0 || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, -1); }
+    else if (k === 'Escape') { const r = CUR.righe[i], kk = td.dataset.f; inp.value = mostra(td.dataset.t || '', r[kk]); inp.blur(); }
+  });
+  box.addEventListener('click', e => {
+    const d = e.target.closest('[data-del]'); if (d) { const i = +d.dataset.del; CUR.righe.splice(i, 1); segnaModifica(); disegnaFoglio(); return; }
+    if (e.target.id === 'btn-riga') { CUR.righe.push(TIPI[CUR.tipo].vuota()); disegnaFoglio(); const ins = document.querySelectorAll('#foglio-t tbody tr:last-child input'); if (ins[0]) ins[0].focus(); }
+  });
+  box.addEventListener('mouseover', e => { const td = e.target.closest('td[data-msg]'); if (td) mostraTip(td.dataset.msg, { target: td }, td.dataset.lv !== 'e'); });
+  box.addEventListener('mouseout', e => { if (e.target.closest('td[data-msg]')) nascondiTip(); });
+  // selezione con il mouse e somma (trascinando sulle celle)
+  box.addEventListener('mousedown', e => {
+    const td = e.target.closest('td[data-i]'); if (!td) { chiudiSelezioneFoglio(); return; }
+    SELF.drag = { a: [+td.dataset.i, +td.dataset.c], moved: false };
+    if (SELF.attiva && !e.shiftKey) chiudiSelezioneFoglio();
+  });
+}
+const SELF = { drag: null, attiva: false, a: null, b: null };
+document.addEventListener('mousemove', e => {
+  if (!SELF.drag || !(e.buttons & 1)) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY), td = el && el.closest && el.closest('#foglio-t td[data-i]'); if (!td) return;
+  const p = [+td.dataset.i, +td.dataset.c];
+  if (!SELF.drag.moved) {
+    if (p[0] === SELF.drag.a[0] && p[1] === SELF.drag.a[1]) return;
+    SELF.drag.moved = true; SELF.attiva = true; $('foglio-t').classList.add('selmode'); if (document.activeElement) document.activeElement.blur(); getSelection().removeAllRanges();
+  }
+  SELF.a = SELF.drag.a; SELF.b = p; disegnaSelFoglio();
+});
+document.addEventListener('mouseup', () => { SELF.drag = null; });
+function disegnaSelFoglio() {
+  document.querySelectorAll('#foglio-t td.sel').forEach(t => t.classList.remove('sel'));
+  const a = SELF.a, b = SELF.b; if (!a || !b) return;
+  const r1 = Math.min(a[0], b[0]), r2_ = Math.max(a[0], b[0]), c1 = Math.min(a[1], b[1]), c2 = Math.max(a[1], b[1]);
+  let somma = 0, n = 0, nn = 0, ultimo = null;
+  for (let r = r1; r <= r2_; r++) for (let c = c1; c <= c2; c++) {
+    const td = document.querySelector(`#foglio-t td[data-i="${r}"][data-c="${c}"]`); if (!td) continue;
+    td.classList.add('sel'); ultimo = td; n++;
+    const v = td.dataset.v; if (v !== '' && v != null && !isNaN(v)) { somma += +v; nn++; }
+  }
+  if (ultimo) mostraSomma(ultimo, n, nn, somma);
+}
+function chiudiSelezioneFoglio() {
+  SELF.attiva = false; SELF.a = SELF.b = null; const t = $('foglio-t'); if (t) { t.classList.remove('selmode'); t.querySelectorAll('td.sel').forEach(x => x.classList.remove('sel')); } nascondiSomma();
+}
+
+// ---- caricamento / salvataggio di una giornata ----
+async function apriGiorno(tipo, data) {
+  CUR.tipo = tipo; CUR.data = data; DATA_SEL[tipo] = data; MESE_SEL[tipo] = meseKey(data);
+  const mese = await DB.mese(TIPI[tipo].tab, S.prod, meseKey(data));
+  const g = mese.get(data);
+  CUR.righe = g ? JSON.parse(JSON.stringify(g.dati)) : []; CUR.altre = g ? g.altre : 0; CUR.esiste = !!g; CUR.dirty = false;
+  const lotti = [...new Set(CUR.righe.map(r => r.lotto).filter(Boolean))];
+  await Promise.all([caricaRegistro(lotti), tipo === 'lavorazioni' ? caricaInfo(S.prod, lotti) : null]);
+  if (CUR.tipo !== tipo || CUR.data !== data) return;
+  $('g-data-txt').value = isoToIt(data); $('g-dow').textContent = giornoSett(data);
+  const at = $('g-altre'); if (at) at.value = CUR.altre || '';
+  disegnaFoglio(); aggiornaStato();
+  setTimeout(() => { const ins = document.querySelector('#foglio-t tbody input'); if (ins && !g) ins.focus(); }, 0);
+}
+async function vaiGiorno(tipo, data) {
+  if (CUR.dirty && CUR.tipo) { const r = await chiediSalvataggio(); if (r === 'annulla') { $('g-data-txt').value = isoToIt(CUR.data); return; } }
+  await apriGiorno(tipo, data);
+}
+function chiediSalvataggio() {
+  return new Promise(res => {
+    apriModal(`<h2>Modifiche non salvate</h2><p>La giornata del ${isoToIt(CUR.data)} ha modifiche non salvate.</p><div class="modal-btns"><button class="btn ghost" id="q-ann">Annulla</button><button class="btn danger" id="q-sca">Scarta</button><button class="btn" id="q-sal">Salva</button></div>`);
+    $('q-ann').onclick = () => { chiudiModal(); res('annulla'); };
+    $('q-sca').onclick = () => { CUR.dirty = false; chiudiModal(); res('scarta'); };
+    $('q-sal').onclick = async () => { chiudiModal(); const ok_ = await salvaGiornata(); res(ok_ ? 'salvata' : 'annulla'); };
+  });
+}
+const rigaVuota = r => !(r.lotto || r.forme || r.sporco || r.polpa || r.fmt || r.linea || r.matr || r.mese || r.anno);
+
+async function conflittiLotti() {
+  const tipo = CUR.tipo, qui = {};
+  CUR.righe.forEach((r, i) => { if (r.lotto && RE_LOTTO.test(r.lotto)) (qui[r.lotto] = qui[r.lotto] || []).push({ r, i }); });
+  const lotti = Object.keys(qui); if (!lotti.length) return [];
+  await caricaRegistro(lotti);
+  const [inf, lav] = await Promise.all([tipo === 'lavorazioni' ? caricaInfo(S.prod, lotti) : null, DB.lottiLavorazioni(S.prod, lotti, tipo === 'lavorazioni' ? CUR.data : null)]);
+  const comb = x => normMatr(x.matr).replace(/\s+/g, '') + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
+  const ma = x => x.mese && x.anno ? String(x.mese).padStart(2, '0') + '/' + x.anno : '—';
+  const out = [];
+  lotti.forEach(l => {
+    const righe = [], visti = new Set();
+    qui[l].forEach(x => { const c = comb(x.r); if (visti.has(c)) return; visti.add(c); righe.push({ dove: 'Questa giornata, riga ' + (x.i + 1), matr: x.r.matr || '—', ma: ma(x.r), c, i: x.i }); });
+    const reg = REG.get(l);
+    if (reg) righe.push({ dove: 'Registro lotti', matr: reg.matr, ma: ma(reg), c: comb(reg), uff: 1 });
+    else {
+      const i2 = tipo === 'lavorazioni' ? infoLotto(S.prod, l) : null; if (i2 && i2.matr) righe.push({ dove: 'Lavaggi', matr: i2.matr, ma: ma(i2), c: comb(i2) });
+      lav.filter(x => x.lotto === l).forEach(x => righe.push({ dove: 'Lavorazioni del ' + isoToIt(x.data), matr: x.matr || '—', ma: ma(x), c: comb(x) }));
+    }
+    if (new Set(righe.map(x => x.c)).size > 1) out.push({ lotto: l, righe });
+  });
+  return out;
+}
+async function salvaGiornata() {
+  const tipo = CUR.tipo, data = CUR.data; if (!tipo || !data) return false;
+  const righe = CUR.righe.filter(r => !rigaVuota(r));
+  const confl = await conflittiLotti();
+  if (confl.length) {
+    const forza = await new Promise(res => {
+      apriModal(`<h2>Lotti con matricola o mese/anno diversi</h2><p>Lo stesso lotto deve avere sempre la stessa matricola e lo stesso mese/anno.</p>
+        <ul class="errlist">${confl.map(c => `<li><b>${esc(c.lotto)}</b>${c.righe.map(x => `<div>${esc(x.dove)}: matricola <b style="min-width:0">${esc(x.matr)}</b> · ${esc(x.ma)}${x.uff ? ' ✔ ufficiale' : ''}</div>`).join('')}</li>`).join('')}</ul>
+        <div class="modal-btns"><button class="btn ghost" id="cf-no">Torna a correggere</button><button class="btn danger" id="cf-si">Salva comunque</button></div>`);
+      $('cf-no').onclick = () => { chiudiModal(); res(false); }; $('cf-si').onclick = () => { chiudiModal(); res(true); };
+    });
+    if (!forza) return false;
+  }
+  try {
+    if (tipo === 'lavorazioni') {                                                  // numero di riga progressivo
+      let cnt = (IMP['riga_' + S.prod] && IMP['riga_' + S.prod].v) || 0, cambiato = false;
+      righe.forEach(r => { if (!r.n) { r.n = ++cnt; cambiato = true; } else if (r.n > cnt) { cnt = r.n; cambiato = true; } });
+      if (cambiato) await DB.setImp('riga_' + S.prod, { v: cnt });
+    }
+    const pulite = righe.map(r => { const o = { ...r }; Object.keys(o).forEach(k => { if (o[k] === '' || o[k] == null) delete o[k]; }); return o; });
+    await DB.salva(TIPI[tipo].tab, S.prod, data, pulite, tipo === 'lavaggi' ? num(CUR.altre) : 0);
+    CUR.righe = righe; CUR.dirty = false; CUR.esiste = pulite.length > 0 || num(CUR.altre) > 0;
+    if (tipo === 'lavaggi') INFO[S.prod].clear();                                 // le medie dei lotti possono essere cambiate
+    let e = 0, w = 0; CUR.righe.forEach((_, i) => Object.values(controlli(tipo, i)).forEach(m => m.lv === 'e' ? e++ : m.lv === 'w' ? w++ : 0));
+    toast(`Giornata del ${isoToIt(data)} salvata${e || w ? ` · ${e} errori, ${w} avvisi` : ''}`);
+    disegnaFoglio(); aggiornaStato(); return true;
+  } catch (e) { toast('Salvataggio non riuscito: ' + (e.message || e), true); return false; }
+}
+
+// ---- elenco del mese ----
+function colsElenco(tipo) {
+  const gp = S.prod === 'GP';
+  if (tipo === 'lavaggi') return [
+    { k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matricola', w: 78 }, { k: 'mese', l: 'Mese', t: 'i0', w: 46, al: 'c' }, { k: 'anno', l: 'Anno', w: 52 },
+    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1 }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 100, tot: 1 }, { k: 'medio', l: 'Peso medio', t: 'kg', w: 80 }, { k: 'pulito', l: 'Pallet pulito', t: 'kg', w: 100, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 130 },
+  ];
+  const c = [{ k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'n', l: 'Riga', t: 'i0', w: 52, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matricola', w: 78 }, { k: 'mese', l: 'Mese', t: 'i0', w: 46, al: 'c' }, { k: 'anno', l: 'Anno', w: 52 },
+    { k: 'forme', l: 'Forme', t: 'i', w: 58, tot: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 76 }, { k: 'stag', l: 'Stag.', t: 'i0', w: 52, al: 'c' }, { k: 'sporco', l: 'Pallet sporco', t: 'kg', w: 92, tot: 1 }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 92, tot: 1 },
+    { k: 'fmt', l: 'Formato', w: 70 }, { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 88, tot: 1 }, { k: 'segatura', l: 'Segatura', t: 'kg', w: 80, tot: 1 }, { k: 'croste', l: 'Croste', t: 'kg', w: 76, tot: 1 }, { k: 'pulitura', l: 'Puliture', t: 'kg', w: 80, tot: 1 }, { k: 'piall', l: 'Piallatura', t: 'kg', w: 84, tot: 1 }];
+  if (gp) c.push({ k: 'q', l: '18% piatti', t: 'kg', w: 84, tot: 1 }, { k: 'marchio', l: 'Marchio', w: 90 });
+  c.push({ k: 'linea', l: 'Linea', w: 110 }, { k: 'pf', l: 'Prodotto finito', t: 'kg', w: 100, tot: 1 }, { k: 'sfridi', l: 'Sfridi totali', t: 'kg', w: 92, tot: 1 });
+  if (gp) c.push({ k: 'ab', l: 'Polpa + piatti', t: 'kg', w: 92, tot: 1 });
+  return c;
+}
+function righeElenco(tipo, mappa) {
+  const out = [];
+  [...mappa.keys()].sort().forEach(data => mappa.get(data).dati.forEach(r => {
+    const cc = calcRiga(tipo, r, data);
+    if (tipo === 'lavaggi') out.push({ data, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), sporco: r.sporco === '' ? null : num(r.sporco), medio: cc.medio, pulito: cc.pulito, codice: cc.codice });
+    else {
+      const o = { data, n: r.n, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), kgf: cc.kgf, stag: cc.stag, sporco: cc.sporco, lavorati: cc.lavorati, fmt: r.fmt, polpa: vuoto(r.polpa) ? null : num(r.polpa), segatura: cc.segatura, croste: cc.croste, pulitura: cc.pulitura, piall: cc.piall, linea: r.linea, pf: cc.pf, sfridi: cc.sfridi, marchio: r.marchio };
+      if (S.prod === 'GP') { o.q = cc.q; o.ab = cc.ab; }
+      out.push(o);
+    }
+  }));
+  return out;
+}
+const tipoColonna = cols => cols.map(c => c.t === 'i0' ? { ...c, t: 't' } : c);
+let TAB_ELENCO = null;
+async function pgElenco(tipo) {
+  const mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
+  if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
+  const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
+  const box = $('elenco-corpo'); if (!box) return;
+  TAB_ELENCO = Tabella(box, { cols, rows });
+  $('elenco-x').onclick = e => {
+    const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
+    if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco del mese', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
+  };
+}
+
+// ---- pagina ----
+async function pgGiorno(tipo) {
+  const main = $('main'), vista = V[tipo];
+  main.innerHTML = `<div class="page-title"><h2>${TIPI[tipo].nome} · ${PRODOTTI[S.prod]}</h2></div>
+    <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button></div>
+    <div id="corpo"></div>`;
+  main.querySelector('.subtabs').onclick = async e => { const v = e.target.dataset.v; if (!v || v === vista) return; if (CUR.dirty && vista === 'giorno') { const r = await chiediSalvataggio(); if (r === 'annulla') return; } V[tipo] = v; pgGiorno(tipo); };
+  if (vista === 'giorno') {
+    $('corpo').innerHTML = `<div class="daybar" style="top:0">
+        <label for="g-data-txt">Data</label>
+        <button class="btn ghost sm" id="g-prev" title="Giorno precedente">◀</button>
+        <span class="data-box"><input type="text" id="g-data-txt" placeholder="gg/mm/aaaa" autocomplete="off" inputmode="numeric" title="Scrivi la data (es. 1911 oppure 19/11/2026) e premi Invio"><button type="button" id="g-cal" title="Calendario"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button><input type="date" id="g-data"></span>
+        <button class="btn ghost sm" id="g-next" title="Giorno successivo">▶</button>
+        <span id="g-dow" class="note" style="min-width:28px"></span>
+        <span id="g-stato" class="stato new">Nuova</span>
+        ${tipo === 'lavaggi' ? `<label class="note" style="display:flex;align-items:center;gap:6px;margin-left:10px">Forme lavate per ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}:<input id="g-altre" inputmode="numeric" style="width:70px;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px" placeholder="0"></label>` : ''}
+        <span class="spacer"></span>
+        <button class="btn ghost sm" id="g-stampa">Stampa / PDF</button><button class="btn ghost sm" id="g-xlsx">Esporta Excel</button>
+        <button class="btn ghost sm" id="g-elimina">Elimina giornata</button>
+        <button class="btn amber" id="g-salva">Salva giornata</button></div>
+      <div id="foglio"></div>`;
+    eventiFoglio($('foglio'));
+    const vai = async s => { const d = parseData(s, +DATA_SEL[tipo].slice(0, 4)); if (!d) { toast('Data non valida', true); $('g-data-txt').value = isoToIt(CUR.data || DATA_SEL[tipo]); return; } await vaiGiorno(tipo, d); };
+    $('g-data-txt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+    $('g-data-txt').addEventListener('change', e => vai(e.target.value));
+    $('g-cal').onclick = () => { const d = $('g-data'); d.value = CUR.data || DATA_SEL[tipo]; d.showPicker ? d.showPicker() : d.click(); };
+    $('g-data').onchange = e => { if (e.target.value) vaiGiorno(tipo, e.target.value); };
+    const shift = n => { const d = new Date(CUR.data + 'T12:00:00'); d.setDate(d.getDate() + n); vaiGiorno(tipo, d.toISOString().slice(0, 10)); };
+    $('g-prev').onclick = () => shift(-1); $('g-next').onclick = () => shift(1);
+    $('g-salva').onclick = salvaGiornata;
+    if ($('g-altre')) { $('g-altre').onchange = e => { const n = parseNum(e.target.value); CUR.altre = n && !isNaN(n) ? Math.round(n) : 0; e.target.value = CUR.altre || ''; segnaModifica(); }; }
+    $('g-elimina').onclick = async () => {
+      if (!CUR.esiste && !CUR.righe.some(r => !rigaVuota(r))) return;
+      if (!await chiedi('Elimina giornata', `Eliminare tutte le righe del ${isoToIt(CUR.data)}?`, 'Elimina', 'Annulla', true)) return;
+      CUR.righe = []; CUR.altre = 0; await salvaGiornata(); await apriGiorno(tipo, CUR.data);
+    };
+    const T = () => { const cols = tipoColonna(colsElenco(tipo)).filter(c => c.k !== 'data'); const mappa = new Map([[CUR.data, { dati: CUR.righe.filter(r => !rigaVuota(r)), altre: 0 }]]); return { cols, vis: righeElenco(tipo, mappa), totali(v) { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } }; };
+    $('g-stampa').onclick = () => { const t = T(); stampaTabella(t, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, `Giornata del ${isoToIt(CUR.data)}`, 'landscape'); };
+    $('g-xlsx').onclick = () => esportaTabella(T(), `${TIPI[tipo].nome}_${S.prod}_${CUR.data}`, TIPI[tipo].nome);
+    await apriGiorno(tipo, DATA_SEL[tipo]);
+  } else {
+    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
+    const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
+    $('m-prev').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
+    $('m-next').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 1); agg(); };
+    agg();
+  }
+}
+window.addEventListener('beforeunload', e => { if (CUR.dirty) { e.preventDefault(); e.returnValue = ''; } });
+// ====== Pagine di consultazione: Polpa, Prelievo magazzino, Totale lavaggi · Codici, Parametri, Backup ======
+const input = (id, v, extra) => `<input id="${id}" value="${esc(v ?? '')}" ${extra || ''}>`;
+async function mesiIntervallo(tab, da, a) {                       // carica tutti i mesi tra due date e unisce le giornate
+  const out = new Map(); let mk = meseKey(da);
+  while (mk <= meseKey(a)) { const m = await DB.mese(tab, S.prod, mk); m.forEach((v, d) => { if (d >= da && d <= a) out.set(d, v); }); mk = meseAdd(mk, 1); }
+  return out;
+}
+const INTERVALLO = { polpa: null, prelievo: null, as400: null };
+function barraIntervallo(id, def) {
+  const i = INTERVALLO[id] || (INTERVALLO[id] = { da: def.da, a: def.a });
+  return `<div class="formrow"><label>Dal<input type="text" id="${id}-da" value="${isoToIt(i.da)}" style="width:110px" inputmode="numeric"></label><label>Al<input type="text" id="${id}-a" value="${isoToIt(i.a)}" style="width:110px" inputmode="numeric"></label>
+    <button class="btn ghost sm" id="${id}-mese">Mese corrente</button><button class="btn ghost sm" id="${id}-oggi">Solo oggi</button>${barraExport(id + '-x')}</div>`;
+}
+function leggiIntervallo(id) {
+  const i = INTERVALLO[id], da = parseData($(id + '-da').value, +i.da.slice(0, 4)), a = parseData($(id + '-a').value, +i.a.slice(0, 4));
+  if (!da || !a) { toast('Date non valide', true); return false; }
+  i.da = da <= a ? da : a; i.a = da <= a ? a : da; return true;
+}
+const meseCorrenteInt = () => { const mk = meseKey(isoOggi()); return { da: mk + '-01', a: fineMese(mk) }; };
+
+// ---------- Polpa: riga per riga ----------
+async function pgPolpa() {
+  const gp = S.prod === 'GP', main = $('main');
+  main.innerHTML = `<div class="page-title"><h2>Polpa · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('polpa', meseCorrenteInt())}<div id="polpa-corpo"></div>`;
+  let T = null;
+  const carica = async () => {
+    if (!leggiIntervallo('polpa')) return; const i = INTERVALLO.polpa;
+    const mappa = await mesiIntervallo('dp_giornate', i.da, i.a), rows = [];
+    [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => { const c = calcLavorazione(S.prod, d, r); rows.push({ n: r.n, lotto: r.lotto, data: d, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), fmt: r.fmt, linea: r.linea, polpa: vuoto(r.polpa) ? null : num(r.polpa), q: c.q, ab: c.ab }); }));
+    const cols = [{ k: 'n', l: 'Num. riga', w: 70, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'matr', l: 'Matricola', w: 80 }, { k: 'mese', l: 'Mese', w: 48, al: 'c' }, { k: 'anno', l: 'Anno', w: 56 },
+      { k: 'forme', l: 'N. forme ingresso', t: 'i', w: 80, tot: 1 }, { k: 'fmt', l: 'Formato', w: 76 }, { k: 'linea', l: 'Linea', w: 112 }, { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 92, tot: 1 }];
+    if (gp) cols.push({ k: 'q', l: '18% piatti (su tot polpa)', t: 'kg', w: 110, tot: 1 }, { k: 'ab', l: 'Polpa + piatti', t: 'kg', w: 100, tot: 1 });
+    T = Tabella($('polpa-corpo'), { cols, rows, sepMese: 'giorno' });
+  };
+  $('polpa-mese').onclick = () => { INTERVALLO.polpa = meseCorrenteInt(); pgPolpa(); };
+  $('polpa-oggi').onclick = () => { INTERVALLO.polpa = { da: isoOggi(), a: isoOggi() }; pgPolpa(); };
+  $('polpa-da').onchange = $('polpa-a').onchange = carica;
+  $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
+    if (x === 'stampa') stampaTabella(T, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape'); else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
+  await carica();
+}
+
+// ---------- Prelievo magazzino (forme lavate per giorno, con Carpi/Cerea) ----------
+async function pgPrelievo() {
+  const main = $('main'), altri = S.prod === 'PR' ? 'CARPI' : 'CEREA';
+  main.innerHTML = `<div class="page-title"><h2>Prelievo magazzino · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('prelievo', meseCorrenteInt())}<div id="prel-corpo"></div>`;
+  let T = null;
+  const carica = async () => {
+    if (!leggiIntervallo('prelievo')) return; const i = INTERVALLO.prelievo;
+    const mappa = await mesiIntervallo('dp_lavaggi', i.da, i.a), rows = [];
+    [...mappa.keys()].sort().forEach(d => { const g = mappa.get(d);
+      g.dati.forEach(r => rows.push({ data: d, matr: r.matr, mese: r.mese, anno: r.anno, lotto: r.lotto, forme: num(r.forme), note: '' }));
+      if (g.altre > 0) rows.push({ data: d, matr: '', mese: '', anno: '', lotto: '', forme: g.altre, note: altri }); });
+    const cols = [{ k: 'data', l: 'Data', t: 'd', w: 90 }, { k: 'matr', l: 'Matricola', w: 80 }, { k: 'mese', l: 'Mese', w: 48, al: 'c' }, { k: 'anno', l: 'Anno', w: 56 }, { k: 'lotto', l: 'Lotto', w: 84 }, { k: 'forme', l: 'Forme', t: 'i', w: 66, tot: 1 }, { k: 'note', l: 'Note', w: 80 }];
+    T = Tabella($('prel-corpo'), { cols, rows, sepMese: 'giorno' });
+    $('prel-corpo').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:8px">Le righe ' + altri + ' si scrivono nella pagina Lavaggi (campo «Forme lavate per ' + (S.prod === 'PR' ? 'Carpi' : 'Cerea') + '»). Il totale del giorno è la somma dei lavaggi e di ' + altri + '.</div>');
+  };
+  $('prelievo-mese').onclick = () => { INTERVALLO.prelievo = meseCorrenteInt(); pgPrelievo(); };
+  $('prelievo-oggi').onclick = () => { INTERVALLO.prelievo = { da: isoOggi(), a: isoOggi() }; pgPrelievo(); };
+  $('prelievo-da').onchange = $('prelievo-a').onchange = carica;
+  $('prelievo-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.prelievo, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
+    if (x === 'stampa') stampaTabella(T, 'Prelievo magazzino ' + PRODOTTI[S.prod], sub, 'portrait'); else esportaTabella(T, `Prelievo_${S.prod}_${i.da}_${i.a}`, 'Prelievo'); };
+  await carica();
+}
+
+// ---------- Totale lavaggi: giorni × mesi ----------
+let ANNO_TOT = new Date().getFullYear();
+async function datiFormeGiorno(anno) {
+  const da = anno + '-01-01', a = anno + '-12-31';
+  if (DEMO) { const o = demoGet('dp_lavaggi') || {}, out = []; Object.entries(o).filter(([k]) => k.startsWith(S.prod + '|' + anno)).forEach(([k, v]) => out.push({ data: k.split('|')[1], lavaggi: (v.dati || []).reduce((s, r) => s + num(r.forme), 0), altre: v.altre || 0 })); return out; }
+  const r = ok(await sb.rpc('dp_forme_giorno', { p_prodotto: S.prod, p_da: da, p_a: a })); return r.data;
+}
+async function pgTotaleLavaggi() {
+  const main = $('main'); main.innerHTML = `<div class="page-title"><h2>Totale lavaggi · ${PRODOTTI[S.prod]}</h2></div><div id="tot-corpo"><div class="empty">Carico…</div></div>`;
+  const dati = await datiFormeGiorno(ANNO_TOT), m = {};
+  dati.forEach(x => { const mm = +x.data.slice(5, 7), gg = +x.data.slice(8, 10); (m[mm] = m[mm] || {})[gg] = +x.lavaggi + +x.altre; });
+  const tot = Array.from({ length: 13 }, (_, i) => i ? Object.values(m[i] || {}).reduce((a, b) => a + b, 0) : 0);
+  const righe = [['Giorno', ...MESI_LUNGHI]]; for (let g = 1; g <= 31; g++) righe.push([g, ...Array.from({ length: 12 }, (_, i) => (m[i + 1] || {})[g] ?? '')]);
+  righe.push(['TOTALE', ...tot.slice(1)]);
+  const tab = `<table class="sheet tab-ro" style="width:auto"><thead><tr>${righe[0].map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${righe.slice(1, -1).map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'r' : 'c'}" ${i ? '' : 'style="background:var(--head);font-weight:600"'}>${v === '' ? '' : fmtKg0(v)}</td>`).join('')}</tr>`).join('')}</tbody><tfoot><tr>${righe[righe.length - 1].map((v, i) => `<td class="${i ? '' : 'lbl'}">${i ? fmtKg0(v) : v}</td>`).join('')}</tr></tfoot></table>`;
+  $('tot-corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="a-prev">◀</button><b>${ANNO_TOT}</b><button id="a-next">▶</button></span><span class="fb"><button class="btn ghost sm" id="t-stampa">Stampa / PDF</button><button class="btn ghost sm" id="t-xlsx">Esporta Excel</button></span><span class="info">Forme lavate per giorno (lavaggi + ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}) · totale anno <b>${fmtKg0(tot.reduce((a, b) => a + b, 0))}</b></span></div><div class="sheet-wrap">${tab}</div>`;
+  $('a-prev').onclick = () => { ANNO_TOT--; pgTotaleLavaggi(); }; $('a-next').onclick = () => { ANNO_TOT++; pgTotaleLavaggi(); };
+  $('t-stampa').onclick = () => stampaHTML(`Totale lavaggi ${PRODOTTI[S.prod]} ${ANNO_TOT}`, 'Forme lavate per giorno', tab.replace('class="sheet tab-ro" style="width:auto"', ''), 'landscape');
+  $('t-xlsx').onclick = () => scarica(xlsxSemplice([{ nome: 'Totale lavaggi', righe: righe.map((r, ri) => ri ? r.map((v, i) => i && v !== '' ? +v : v) : r), grassetto: [0, righe.length - 1], larghezze: [10, ...Array(12).fill(12)] }]), `TotaleLavaggi_${S.prod}_${ANNO_TOT}.xlsx`);
+}
+
+// ---------- Codici articolo ----------
+async function pgCodici() {
+  const main = $('main');
+  main.innerHTML = `<div class="page-title"><h2>Codici articolo · ${PRODOTTI[S.prod]}</h2></div>
+    <div class="note" style="margin-bottom:10px">Ogni matricola ha un codice articolo, usato nei lavaggi e nella stampa AS400. Nei lavaggi puoi comunque cambiare il codice di una singola riga.</div>
+    <div class="formrow"><label>Matricola<input id="c-m" style="width:110px"></label><label>Codice articolo<input id="c-c" style="width:200px"></label><button class="btn amber" id="c-add">Aggiungi / aggiorna</button><label>Cerca<input id="c-q" style="width:160px" placeholder="matricola o codice"></label>${barraExport('c-x')}</div><div id="c-corpo"></div>`;
+  let T = null;
+  const rows = () => Object.entries(CODICI[S.prod]).map(([matr, codice]) => ({ matr, codice })).sort((a, b) => confrontaTxt(a.matr, b.matr));
+  const disegna = () => {
+    const q = $('c-q').value.trim().toLowerCase(), r = rows().filter(x => !q || x.matr.toLowerCase().includes(q) || x.codice.toLowerCase().includes(q));
+    $('c-corpo').innerHTML = `<div class="sheet-wrap" style="max-width:520px"><table class="sheet tab-ro"><thead><tr><th>Matricola</th><th>Codice articolo</th><th></th></tr></thead><tbody>${r.map(x => `<tr><td>${esc(x.matr)}</td><td><input class="cod-i" data-m="${esc(x.matr)}" value="${esc(x.codice)}" style="border:0;width:100%;font:inherit;background:transparent"></td><td style="width:34px"><button class="del" data-m="${esc(x.matr)}" title="Elimina">✕</button></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Nessun codice</td></tr>'}</tbody></table></div><div class="legend"><span>${r.length} matricole</span></div>`;
+    T = { cols: [{ k: 'matr', l: 'Matricola' }, { k: 'codice', l: 'Codice articolo', w: 200 }], vis: r, totali: () => ({}) };
+  };
+  $('c-add').onclick = async () => { const m = normMatr($('c-m').value), c = $('c-c').value.trim().toUpperCase(); if (!m || !c) return toast('Scrivi matricola e codice', true); try { await DB.setCodice(S.prod, m, c); $('c-m').value = $('c-c').value = ''; disegna(); toast('Salvato'); } catch (e) { toast('Errore: ' + e.message, true); } };
+  $('c-q').oninput = disegna;
+  $('c-corpo').addEventListener('change', async e => { if (!e.target.classList.contains('cod-i')) return; try { const v = e.target.value.trim().toUpperCase(); if (v) await DB.setCodice(S.prod, e.target.dataset.m, v); else await DB.delCodice(S.prod, e.target.dataset.m); toast('Salvato'); disegna(); } catch (x) { toast('Errore: ' + x.message, true); } });
+  $('c-corpo').addEventListener('click', async e => { const b = e.target.closest('.del'); if (!b) return; if (await chiedi('Elimina codice', `Eliminare la matricola ${esc(b.dataset.m)}?`, 'Elimina', 'Annulla', true)) { await DB.delCodice(S.prod, b.dataset.m); disegna(); } });
+  $('c-x').onclick = e => { const x = e.target.dataset.x; if (!x) return; if (x === 'stampa') stampaTabella(T, 'Codici articolo ' + PRODOTTI[S.prod], '', 'portrait'); else esportaTabella(T, 'Codici_' + S.prod, 'Codici articolo'); };
+  disegna();
+}
+
+// ---------- Parametri ----------
+async function pgParametri() {
+  const p = PAR[S.prod], gp = S.prod === 'GP', main = $('main');
+  const campi = [['calo', 'Calo peso lavaggio e lavorazione (%)', 'Il pallet pulito e i kg lavorati sono il pallet sporco meno questa percentuale'], ['segatura', 'Segatura per forma (kg)'], ['croste', 'Croste per forma (kg)', 'Solo sotto il limite di grammatura e mai per il taglio liscio'], ['limite_croste_g', 'Limite grammatura croste (g)', 'Le croste si calcolano solo per formati sotto questo valore'], ['pulitura', 'Puliture a perdere per forma (kg)'], ['piallatura', 'Piallatura per forma, solo taglio liscio (kg)'], ['peso_min', 'Peso medio minimo forma (kg)', 'Sotto questo valore avviso giallo nei lavaggi'], ['peso_max', 'Peso medio massimo forma (kg)']];
+  if (gp) campi.push(['piatti_pct', 'Piatti: % sulla polpa (taglio liscio)']);
+  main.innerHTML = `<div class="page-title"><h2>Parametri · ${PRODOTTI[S.prod]}</h2></div><div class="panel" style="max-width:640px">
+    ${campi.map(([k, l, h]) => `<div class="formrow" style="margin-bottom:8px"><label style="flex:1">${l}${h ? `<span style="font-weight:400">${h}</span>` : ''}<input id="p-${k}" value="${String(p[k]).replace('.', ',')}" style="width:140px;text-align:right"></label></div>`).join('')}
+    <button class="btn amber" id="p-salva">Salva parametri</button> <button class="btn ghost" id="p-ripr">Ripristina valori iniziali</button>
+    <p class="note" style="margin-top:12px">Modificando un parametro i valori calcolati cambiano in tutte le giornate (come cambiare una cella di Excel). Per i lavaggi e le lavorazioni il calo è un parametro unico.</p></div>`;
+  $('p-salva').onclick = async () => {
+    const n = { ...p }; for (const [k] of campi) { const v = parseNum($('p-' + k).value); if (v == null || isNaN(v)) return toast('Valore non valido: ' + k, true); n[k] = v; }
+    PAR[S.prod] = n; try { await DB.setImp('param_' + S.prod, n); toast('Parametri salvati'); } catch (e) { toast('Errore: ' + e.message, true); }
+  };
+  $('p-ripr').onclick = async () => { if (!await chiedi('Ripristina', 'Riportare tutti i parametri ai valori iniziali?', 'Ripristina', 'Annulla')) return; PAR[S.prod] = { ...PARAM_DEF[S.prod] }; await DB.setImp('param_' + S.prod, PAR[S.prod]); pgParametri(); };
+}
+
+// ---------- Backup ----------
+async function pgBackup() {
+  const main = $('main');
+  main.innerHTML = `<div class="page-title"><h2>Backup</h2></div><div class="grid2"><div class="panel"><h3>Esporta backup</h3><p class="note">Scarica un file con tutti i dati di Parmigiano Reggiano e Grana Padano (lavaggi, lavorazioni, codici, parametri). Il piano gratuito di Supabase non fa backup automatici: conviene farne uno ogni tanto.</p><button class="btn amber" id="b-exp">Esporta backup</button><span class="note" id="b-es"></span></div>
+    <div class="panel"><h3>Completa dal Registro lotti</h3><p class="note">Cerca nel Registro lotti la matricola e il mese/anno dei lotti che ne sono privi (lavaggi e lavorazioni di ${PRODOTTI[S.prod]}) e li compila. Non tocca le righe già complete.</p><button class="btn amber" id="b-reg">Completa dati mancanti</button><div id="b-reg-r" style="margin-top:10px" class="note"></div></div>
+    <div class="panel"><h3>Importa backup</h3><p class="note">Ricarica un file di backup. Le giornate presenti nel file sostituiscono quelle con la stessa data.</p><input type="file" id="b-file" accept=".json,application/json"><div id="b-imp" style="margin-top:10px"></div></div></div>`;
+  $('b-exp').onclick = async () => {
+    $('b-es').textContent = ' Preparo il file…';
+    try {
+      const out = { versione: 1, creato: new Date().toISOString(), impostazioni: await DB.tutteImp(), codici: await DB.tuttiCodici(), giornate: [], lavaggi: [] };
+      for (const pr of ['PR', 'GP']) { out.giornate.push(...await DB.tutto('dp_giornate', pr)); out.lavaggi.push(...await DB.tutto('dp_lavaggi', pr)); }
+      scarica(new Blob([JSON.stringify(out)], { type: 'application/json' }), `backup_dati_produttivi_${isoOggi()}.json`);
+      $('b-es').textContent = ` Fatto: ${out.lavaggi.length} giornate di lavaggi, ${out.giornate.length} di lavorazioni.`;
+    } catch (e) { $('b-es').textContent = ' Errore: ' + (e.message || e); }
+  };
+  $('b-reg').onclick = async () => {
+    const out = $('b-reg-r'); out.textContent = 'Controllo…'; let cambiate = 0, giorni = 0, restano = new Set();
+    try {
+      for (const tab of ['dp_lavaggi', 'dp_giornate']) {
+        let mk = '2025-12'; const fine = meseKey(isoOggi());
+        while (mk <= fine) {
+          const mappa = await DB.mese(tab, S.prod, mk);
+          const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.filter(r => r.lotto && (vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno))).map(r => r.lotto)))];
+          if (lotti.length) {
+            await caricaRegistro(lotti); if (tab === 'dp_giornate') await caricaInfo(S.prod, lotti);
+            for (const [data, g] of mappa) {
+              let mod = false;
+              g.dati.forEach(r => {
+                if (!r.lotto || !(vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno))) return;
+                const reg = REG.get(r.lotto), inf = tab === 'dp_giornate' ? infoLotto(S.prod, r.lotto) : null, d = inf && inf.matr ? inf : reg;
+                if (!d) { restano.add(r.lotto); return; }
+                ['matr', 'mese', 'anno'].forEach(f => { if (vuoto(r[f]) && !vuoto(d[f])) { r[f] = d[f]; mod = true; cambiate++; } });
+              });
+              if (mod) { await DB.salva(tab, S.prod, data, g.dati, g.altre); giorni++; }
+            }
+          }
+          mk = meseAdd(mk, 1);
+        }
+      }
+      INFO[S.prod].clear();
+      out.innerHTML = `<span class="okbox">Compilati ${cambiate} campi in ${giorni} giornate.</span>${restano.size ? `<p>Lotti non trovati nel Registro lotti (${restano.size}): ${[...restano].slice(0, 40).join(', ')}${restano.size > 40 ? '…' : ''}</p>` : ''}`;
+    } catch (e) { out.innerHTML = `<span class="errbox">Errore: ${esc(e.message || e)}</span>`; }
+  };
+  $('b-file').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const b = JSON.parse(await f.text()); if (!b.giornate || !b.lavaggi) throw new Error('File non valido');
+      if (!await chiedi('Importa backup', `Il file contiene ${b.lavaggi.length} giornate di lavaggi e ${b.giornate.length} di lavorazioni. Importarli?`, 'Importa', 'Annulla')) return;
+      $('b-imp').textContent = 'Importo…';
+      await DB.scriviTutto('dp_lavaggi', b.lavaggi); await DB.scriviTutto('dp_giornate', b.giornate);
+      for (const c of b.codici || []) await DB.setCodice(c.prodotto, c.matricola, c.codice);
+      for (const [k, v] of Object.entries(b.impostazioni || {})) { await DB.setImp(k, v); if (k.startsWith('param_')) PAR[k.slice(6)] = { ...PARAM_DEF[k.slice(6)], ...v }; }
+      Object.keys(CACHE).forEach(k => delete CACHE[k]); lsDelPrefix(); INFO.PR.clear(); INFO.GP.clear();
+      $('b-imp').innerHTML = '<span class="okbox">Backup importato.</span>';
+    } catch (x) { $('b-imp').innerHTML = `<span class="errbox">Errore: ${esc(x.message || x)}</span>`; }
+  };
+}
+// ====== AS400, Invio OCQ mensile, Rintracciabilità Carpi, Scheda consorzio ======
+const mmaa = (m, a) => m && a ? String(m).padStart(2, '0') + '/' + a : '';
+
+// ---------- Registrazione AS400: lavaggi raggruppati per lotto ----------
+const GIORNI_AS = { sel: null };
+async function pgAS400() {
+  const main = $('main'), pr = S.prod === 'PR';
+  main.innerHTML = `<div class="page-title"><h2>${pr ? 'Stampa registrazione AS400' : 'Registrazione AS400'} · ${PRODOTTI[S.prod]}</h2></div>${barraIntervallo('as400', { da: isoOggi(), a: isoOggi() })}<div id="as-giorni" class="fb"></div><div id="as-corpo"></div>`;
+  let T = null, mappa = new Map();
+  const carica = async () => {
+    if (!leggiIntervallo('as400')) return; const i = INTERVALLO.as400;
+    mappa = await mesiIntervallo('dp_lavaggi', i.da, i.a);
+    const giorni = [...mappa.keys()].filter(d => mappa.get(d).dati.length).sort();
+    if (!GIORNI_AS.sel || GIORNI_AS.chiave !== i.da + i.a) { GIORNI_AS.sel = new Set(giorni); GIORNI_AS.chiave = i.da + i.a; }
+    $('as-giorni').innerHTML = giorni.length ? `<span class="note">Giornate:</span>` + giorni.map(d => `<button class="btn sm ${GIORNI_AS.sel.has(d) ? '' : 'ghost'}" data-d="${d}">${isoToIt(d).slice(0, 5)} ${giornoSett(d)}</button>`).join('') + `<button class="btn sm ghost" data-d="*">Tutte</button><button class="btn sm ghost" data-d="-">Nessuna</button>` : '<span class="note">Nessun lavaggio nel periodo.</span>';
+    disegna();
+  };
+  const disegna = () => {
+    const gr = new Map();
+    [...mappa.keys()].sort().filter(d => GIORNI_AS.sel.has(d)).forEach(d => mappa.get(d).dati.forEach(r => {
+      const c = calcLavaggio(S.prod, r), k = r.lotto + '|' + c.codice, x = gr.get(k) || { matr: r.matr, mm: mmaa(r.mese, r.anno), lotto: r.lotto, forme: 0, pulito: 0, codice: c.codice };
+      x.forme += num(r.forme); x.pulito += c.pulito == null ? 0 : mround(c.pulito); gr.set(k, x);
+    }));
+    const cols = [{ k: 'matr', l: 'Matricola', w: 90 }, { k: 'mm', l: 'Mese/anno', w: 90, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 90 }, { k: 'forme', l: 'Forme', t: 'i', w: 70, tot: 1 }, { k: 'pulito', l: 'Pallet pulito (kg)', t: 'kg', w: 120, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 150 }];
+    T = Tabella($('as-corpo'), { cols, rows: [...gr.values()] });
+  };
+  $('as-giorni').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const d = b.dataset.d;
+    if (d === '*') GIORNI_AS.sel = new Set([...mappa.keys()].filter(x => mappa.get(x).dati.length)); else if (d === '-') GIORNI_AS.sel = new Set(); else GIORNI_AS.sel.has(d) ? GIORNI_AS.sel.delete(d) : GIORNI_AS.sel.add(d);
+    carica(); };
+  $('as400-mese').onclick = () => { INTERVALLO.as400 = meseCorrenteInt(); pgAS400(); };
+  $('as400-oggi').onclick = () => { INTERVALLO.as400 = { da: isoOggi(), a: isoOggi() }; pgAS400(); };
+  $('as400-da').onchange = $('as400-a').onchange = () => { GIORNI_AS.sel = null; carica(); };
+  $('as400-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.as400, sub = `lavaggi dal ${isoToIt(i.da)} al ${isoToIt(i.a)} · ${GIORNI_AS.sel.size} giornate`;
+    if (x === 'stampa') stampaTabella(T, 'Registrazione AS400 ' + PRODOTTI[S.prod], sub, 'portrait'); else esportaTabella(T, `AS400_${S.prod}_${i.da}_${i.a}`, 'AS400'); };
+  await carica();
+}
+
+// ---------- Invio OCQ mensile (solo Parmigiano) ----------
+const FASCE_OCQ = [['12', 'da 12 a 18 mesi', 11, 18], ['19', 'da 19 a 24 mesi', 19, 24], ['25', 'da 25 a 30 mesi', 25, 30], ['31', 'da 31 a 36 mesi', 31, 36], ['37', 'oltre 37 mesi', 37, 999]];
+const fasciaDi = s => { if (s == null) return null; const f = FASCE_OCQ.find(x => s >= x[2] && s <= x[3]); return f ? f[0] : null; };
+let MESE_OCQ = meseKey(isoOggi());
+async function pgOCQ() {
+  const main = $('main');
+  main.innerHTML = `<div class="page-title"><h2>Invio OCQ mensile · ${PRODOTTI[S.prod]}</h2></div><div class="toolbar"><span class="mesenav"><button id="o-prev">◀</button><b id="o-lab">${meseLabel(MESE_OCQ)}</b><button id="o-next">▶</button></span>${barraExport('o-x')}</div><div id="o-kpi" class="kpi"></div><div id="o-fasce"></div><div id="o-corpo" style="margin-top:14px"></div>`;
+  const [mappa, lav] = await Promise.all([DB.mese('dp_giornate', S.prod, MESE_OCQ), DB.mese('dp_lavaggi', S.prod, MESE_OCQ)]);
+  await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
+  const rows = []; const tot = { pf: 0, sfridi: 0, forme: 0 }, fs = {}; FASCE_OCQ.forEach(f => fs[f[0]] = 0);
+  [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => {
+    const c = calcLavorazione(S.prod, d, r), f = fasciaDi(c.stag), o = { n: r.n, data: d, lotto: r.lotto, matr: r.matr, mm: mmaa(r.mese, r.anno), forme: num(r.forme), kgf: c.kgf, stag: c.stag, lavorati: c.lavorati, fmt: r.fmt, polpa: vuoto(r.polpa) ? null : num(r.polpa), segatura: c.segatura, croste: c.croste, pulitura: c.pulitura, piall: c.piall, linea: r.linea, pf: c.pf, sfridi: c.sfridi };
+    FASCE_OCQ.forEach(x => o['f' + x[0]] = f === x[0] ? c.pf : null);
+    rows.push(o); tot.pf += c.pf || 0; tot.sfridi += c.sfridi || 0; tot.forme += num(r.forme); if (f) fs[f] += c.pf || 0;
+  }));
+  const lavate = [...lav.values()].reduce((s, g) => s + g.dati.reduce((a, r) => a + num(r.forme), 0) + g.altre, 0);
+  $('o-kpi').innerHTML = `<div class="pill">Prodotto finito <b>${fmtKg(tot.pf)}</b></div><div class="pill">Sfridi totali <b>${fmtKg(tot.sfridi)}</b></div><div class="pill">Forme lavorate <b>${fmtKg0(tot.forme)}</b></div><div class="pill">Forme lavate (con Carpi) <b>${fmtKg0(lavate)}</b></div>`;
+  const sommaFasce = Object.values(fs).reduce((a, b) => a + b, 0);
+  $('o-fasce').innerHTML = `<div class="panel" style="max-width:560px"><h3>Prodotto finito per stagionatura</h3><table class="list" style="width:100%"><thead><tr><th>Fascia</th><th class="r">Kg prodotto finito</th></tr></thead><tbody>${FASCE_OCQ.map(f => `<tr><td>${f[1]}</td><td class="r">${fmtKg(fs[f[0]])}</td></tr>`).join('')}</tbody><tfoot><tr><td>Totale fasce</td><td class="r">${fmtKg(sommaFasce)}</td></tr></tfoot></table>${Math.abs(sommaFasce - tot.pf) > 0.005 ? `<p class="note" style="margin-top:8px">Differenza di ${fmtKg(tot.pf - sommaFasce)} kg rispetto al prodotto finito totale: righe con stagionatura sotto gli 11 mesi o mancante.</p>` : ''}</div>`;
+  const cols = [{ k: 'n', l: 'Riga', w: 50, al: 'c' }, { k: 'data', l: 'Data', t: 'd', w: 88 }, { k: 'lotto', l: 'Lotto', w: 80 }, { k: 'matr', l: 'Matr.', w: 66 }, { k: 'mm', l: 'Mese/anno', w: 76, al: 'c' }, { k: 'forme', l: 'Forme', t: 'i', w: 56, tot: 1 }, { k: 'kgf', l: 'Kg forma', t: 'kg', w: 70 }, { k: 'stag', l: 'Stag.', w: 48, al: 'c' }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg', w: 90, tot: 1 }, { k: 'fmt', l: 'Formato', w: 66 }, { k: 'polpa', l: 'Kg polpa', t: 'kg', w: 84, tot: 1 }, { k: 'segatura', l: 'Segatura', t: 'kg', w: 70, tot: 1 }, { k: 'croste', l: 'Croste', t: 'kg', w: 70, tot: 1 }, { k: 'pulitura', l: 'Puliture', t: 'kg', w: 70, tot: 1 }, { k: 'piall', l: 'Piallatura', t: 'kg', w: 76, tot: 1 }, { k: 'linea', l: 'Linea', w: 104 }, { k: 'pf', l: 'Prodotto finito', t: 'kg', w: 96, tot: 1 }, { k: 'sfridi', l: 'Sfridi totali', t: 'kg', w: 90, tot: 1 }, ...FASCE_OCQ.map(f => ({ k: 'f' + f[0], l: f[1], t: 'kg', w: 96, tot: 1 }))];
+  const T = Tabella($('o-corpo'), { cols, rows });
+  $('o-prev').onclick = () => { MESE_OCQ = meseAdd(MESE_OCQ, -1); pgOCQ(); }; $('o-next').onclick = () => { MESE_OCQ = meseAdd(MESE_OCQ, 1); pgOCQ(); };
+  $('o-x').onclick = e => { const x = e.target.dataset.x; if (!x) return; if (x === 'stampa') stampaTabella(T, 'Invio OCQ mensile ' + meseLabel(MESE_OCQ), 'Parmigiano Reggiano', 'landscape'); else esportaTabella(T, `OCQ_${S.prod}_${MESE_OCQ}`, 'OCQ'); };
+}
+
+// ---------- Rintracciabilità Carpi (solo Parmigiano) ----------
+async function trovaRiga(prod, n) {
+  if (DEMO) { const o = demoGet('dp_giornate') || {}; for (const [k, v] of Object.entries(o)) { if (!k.startsWith(prod + '|')) continue; const r = (v.dati || []).find(x => x.n === n); if (r) return { data: k.split('|')[1], riga: r }; } return null; }
+  const r = ok(await sb.rpc('dp_riga_lavorazione', { p_prodotto: prod, p_n: n })); return r.data && r.data[0] ? { data: r.data[0].data, riga: r.data[0].riga } : null;
+}
+async function pgCarpi() {
+  const main = $('main'), chiave = 'carpi_' + S.prod; let righe = ((IMP[chiave] && IMP[chiave].righe) || []).slice();
+  while (righe.length < 5) righe.push('');
+  main.innerHTML = `<div class="page-title"><h2>Rintracciabilità Carpi · ${PRODOTTI[S.prod]}</h2></div><div class="note" style="margin-bottom:10px">Scrivi il numero di riga della lavorazione: gli altri dati si compilano da soli. I numeri restano salvati dopo la stampa; «Cancella dati» svuota la tabella.</div><div class="fb"><button class="btn ghost sm" id="k-add">+ Aggiungi riga</button><button class="btn ghost sm" id="k-clr">Cancella dati</button>${barraExport('k-x')}</div><div id="k-corpo"></div>`;
+  const dati = [];
+  const salva = async () => { try { await DB.setImp(chiave, { righe: righe.filter(x => x !== '') }); } catch (e) { toast('Errore: ' + e.message, true); } };
+  const calcola = async () => {
+    dati.length = 0;
+    for (const n of righe) {
+      if (n === '' || n == null) { dati.push(null); continue; }
+      const t = await trovaRiga(S.prod, +n); if (!t) { dati.push({ n, err: true }); continue; }
+      await caricaInfo(S.prod, [t.riga.lotto]); const c = calcLavorazione(S.prod, t.data, t.riga);
+      dati.push({ n, data: t.data, lotto: t.riga.lotto, matr: t.riga.matr, mm: mmaa(t.riga.mese, t.riga.anno), forme: num(t.riga.forme), kgf: c.kgf, stag: c.stag, lavorati: c.lavorati, fmt: t.riga.fmt, polpa: vuoto(t.riga.polpa) ? null : num(t.riga.polpa) });
+    }
+  };
+  const disegna = async () => {
+    await calcola();
+    $('k-corpo').innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro"><thead><tr><th>Riga lavorazione</th><th>Data</th><th>Lotto</th><th>Matricola</th><th>Mese/anno</th><th>N. forme ingresso</th><th>Kg forma</th><th>Stag.</th><th>Kg lavorati</th><th>Formato</th><th>Kg polpa</th><th></th></tr></thead><tbody>${righe.map((n, i) => { const d = dati[i];
+      return `<tr><td style="padding:0"><input data-i="${i}" value="${esc(n)}" inputmode="numeric" style="width:90px;border:0;font:inherit;padding:6px;text-align:center;background:#FFFBEA"></td>${d && !d.err ? `<td class="c">${isoToIt(d.data)}</td><td>${esc(d.lotto)}</td><td>${esc(d.matr)}</td><td class="c">${d.mm}</td><td class="r">${fmtKg0(d.forme)}</td><td class="r">${fmtKg(d.kgf)}</td><td class="c">${d.stag ?? ''}</td><td class="r">${fmtKg(d.lavorati)}</td><td>${esc(d.fmt)}</td><td class="r">${fmtKg(d.polpa)}</td>` : `<td colspan="10" style="color:var(--danger)">${d && d.err ? 'Riga non trovata' : ''}</td>`}<td style="width:34px"><button class="del" data-del="${i}">✕</button></td></tr>`; }).join('')}</tbody></table></div>`;
+  };
+  $('k-corpo').addEventListener('change', async e => { const i = e.target.dataset.i; if (i == null) return; const v = e.target.value.trim(); righe[+i] = v === '' ? '' : (parseInt(v, 10) || ''); await salva(); disegna(); });
+  $('k-corpo').addEventListener('click', async e => { const b = e.target.closest('[data-del]'); if (!b) return; righe.splice(+b.dataset.del, 1); while (righe.length < 5) righe.push(''); await salva(); disegna(); });
+  $('k-add').onclick = () => { righe.push(''); disegna(); };
+  $('k-clr').onclick = async () => { if (!await chiedi('Cancella dati', 'Svuotare la tabella della rintracciabilità Carpi?', 'Cancella', 'Annulla', true)) return; righe = ['', '', '', '', '']; await salva(); disegna(); };
+  const T = () => { const v = dati.filter(d => d && !d.err); const cols = [{ k: 'n', l: 'Riga lavorazione' }, { k: 'data', l: 'Data', t: 'd' }, { k: 'lotto', l: 'Lotto' }, { k: 'matr', l: 'Matricola' }, { k: 'mm', l: 'Mese/anno' }, { k: 'forme', l: 'N. forme ingresso', t: 'i' }, { k: 'kgf', l: 'Kg forma', t: 'kg' }, { k: 'stag', l: 'Stag.' }, { k: 'lavorati', l: 'Kg lavorati', t: 'kg' }, { k: 'fmt', l: 'Formato' }, { k: 'polpa', l: 'Kg polpa', t: 'kg' }]; return { cols, vis: v, totali: () => ({}) }; };
+  $('k-x').onclick = e => { const x = e.target.dataset.x; if (!x) return; if (x === 'stampa') stampaTabella(T(), 'Rintracciabilità Carpi', PRODOTTI[S.prod], 'landscape'); else esportaTabella(T(), 'Rintracciabilita_Carpi', 'Carpi'); };
+  await disegna();
+}
+
+// ---------- Scheda consorzio (solo Grana Padano) ----------
+const CONS = { da: isoOggi(), a: isoOggi(), pag: 0, note: {} };
+async function pgConsorzio() {
+  const main = $('main'), off = (IMP.consorzio_offset && IMP.consorzio_offset.v) || { x: 0, y: 0 };
+  main.innerHTML = `<div class="page-title"><h2>Scheda consorzio · ${PRODOTTI[S.prod]}</h2></div>
+    <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button>
+      <label>Spostamento X (mm)<input id="cs-x" style="width:80px" value="${off.x}"></label><label>Spostamento Y (mm)<input id="cs-y" style="width:80px" value="${off.y}"></label></div>
+    <div class="fb"><button class="btn ghost sm" id="cs-p">◀ Scheda precedente</button><b id="cs-pag"></b><button class="btn ghost sm" id="cs-n">Scheda successiva ▶</button><button class="btn amber sm" id="cs-st">Stampa su modulo prestampato</button><button class="btn ghost sm" id="cs-stc">Stampa con intestazioni</button><button class="btn ghost sm" id="cs-xl">Esporta Excel</button></div><div id="cs-corpo"></div>`;
+  let righe = [];
+  const carica = async () => {
+    const da = parseData($('cs-da').value, +CONS.da.slice(0, 4)), a = parseData($('cs-a').value, +CONS.a.slice(0, 4)); if (!da || !a) return toast('Date non valide', true);
+    CONS.da = da <= a ? da : a; CONS.a = da <= a ? a : da;
+    const mappa = await mesiIntervallo('dp_giornate', CONS.da, CONS.a); righe = [];
+    const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)))]; await caricaInfo(S.prod, lotti);
+    [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab }); }));
+    CONS.pag = 0; disegna();
+  };
+  const pagine = () => Math.max(1, Math.ceil(righe.length / 15));
+  const cols = [{ k: 'n', l: 'N.', w: 50 }, { k: 'data', l: 'Data', t: 'd', w: 86 }, { k: 'fmt', l: 'Lavorazione: peso', w: 90 }, { k: 'tipo', l: 'Tipo', w: 110 }, { k: 'lotto', l: 'Lotto', w: 84 }, { k: 'forme', l: 'N. forme', t: 'i', w: 66 }, { k: 'matr', l: 'Matr.', w: 66 }, { k: 'mm', l: 'Mese e anno', w: 80 }, { k: 'iniz', l: 'Peso iniziale (kg)', t: 'kg', w: 100 }, { k: 'fin', l: 'Peso finale (kg)', t: 'kg', w: 100 }, { k: 'sfridi', l: 'Sfridi (kg)', t: 'kg', w: 90 }];
+  const paginaRighe = () => righe.slice(CONS.pag * 15, CONS.pag * 15 + 15);
+  const disegna = () => {
+    $('cs-pag').textContent = ` Scheda ${CONS.pag + 1} di ${pagine()} · ${righe.length} righe `;
+    const pr = paginaRighe(), tot = pr.reduce((s, r) => s + num(r.sfridi), 0);
+    $('cs-corpo').innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro"><thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note: kg utilizzati o conto lavoro</th></tr></thead><tbody>${pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td style="padding:0"><input data-nr="${CONS.pag * 15 + i}" value="${esc(CONS.note[CONS.pag * 15 + i] || '')}" style="border:0;width:220px;font:inherit;padding:5px 8px"></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="10" class="lbl" style="text-align:right">Totale sfridi</td><td>${fmtKg(tot)}</td><td></td></tr></tfoot></table></div><p class="note" style="margin-top:8px">Massimo 15 righe per scheda. La colonna Note è solo per la stampa (non viene salvata).</p>`;
+  };
+  $('cs-corpo').addEventListener('input', e => { if (e.target.dataset.nr != null) CONS.note[e.target.dataset.nr] = e.target.value; });
+  const stampa = (completa) => {
+    const pr = paginaRighe(), tot = pr.reduce((s, r) => s + num(r.sfridi), 0), ox = parseNum($('cs-x').value) || 0, oy = parseNum($('cs-y').value) || 0;
+    DB.setImp('consorzio_offset', { v: { x: ox, y: oy } }).catch(() => { });
+    const body = pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td>${esc(CONS.note[CONS.pag * 15 + i] || '')}</td></tr>`).join('');
+    const head = completa ? `<thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note</th></tr></thead>` : '';
+    stampaHTML('Scheda consorzio', completa ? 'TRENTIN SPA · PEGOGNAGA (MN)' : '', `<div style="position:relative;left:${ox}mm;top:${oy}mm"><table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:right">Totale sfridi</td><td class="r">${fmtKg(tot)}</td><td></td></tr></tbody></table></div>`, 'landscape');
+  };
+  $('cs-st').onclick = () => stampa(false); $('cs-stc').onclick = () => stampa(true);
+  $('cs-xl').onclick = () => { const v = paginaRighe(); scarica(xlsxSemplice([{ nome: 'Scheda consorzio', righe: [[...cols.map(c => c.l), 'Note'], ...v.map((r, i) => [...cols.map(c => { const x = r[c.k]; return (c.t === 'kg' || c.t === 'i') ? (x == null ? '' : +x) : c.t === 'd' ? isoToIt(x) : (x ?? ''); }), CONS.note[CONS.pag * 15 + i] || ''])], grassetto: [0], larghezze: [6, 12, 14, 16, 12, 10, 10, 12, 14, 14, 12, 30] }]), `SchedaConsorzio_${CONS.da}_${CONS.pag + 1}.xlsx`); };
+  $('cs-p').onclick = () => { if (CONS.pag > 0) { CONS.pag--; disegna(); } }; $('cs-n').onclick = () => { if (CONS.pag < pagine() - 1) { CONS.pag++; disegna(); } };
+  $('cs-da').onchange = $('cs-a').onchange = carica; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
+  await carica();
+}
+// ====== Guscio: menu, selettore prodotto, login, avvio ======
+const MENU = () => {
+  const pr = S.prod === 'PR';
+  return [
+    { t: 'Inserimento' },
+    { id: 'lavaggi', n: 'Lavaggi', f: () => pgGiorno('lavaggi') },
+    { id: 'lavorazioni', n: 'Lavorazioni', f: () => pgGiorno('lavorazioni') },
+    { t: 'Stampe e controlli' },
+    { id: 'polpa', n: 'Polpa', f: pgPolpa },
+    { id: 'as400', n: pr ? 'Stampa registrazione AS400' : 'Registrazione AS400', f: () => window.pgAS400 ? pgAS400() : pgPresto() },
+    { id: 'prelievo', n: 'Prelievo magazzino', f: pgPrelievo },
+    { id: 'totale', n: 'Totale lavaggi', f: pgTotaleLavaggi },
+    pr ? { id: 'ocq', n: 'Invio OCQ mensile', f: () => window.pgOCQ ? pgOCQ() : pgPresto() } : null,
+    pr ? { id: 'carpi', n: 'Rintracciabilità Carpi', f: () => window.pgCarpi ? pgCarpi() : pgPresto() } : null,
+    !pr ? { id: 'consorzio', n: 'Scheda consorzio', f: () => window.pgConsorzio ? pgConsorzio() : pgPresto() } : null,
+    { t: 'Impostazioni' },
+    { id: 'codici', n: 'Codici articolo', f: pgCodici },
+    { id: 'parametri', n: 'Parametri', f: pgParametri },
+    { id: 'backup', n: 'Backup', f: pgBackup },
+  ].filter(Boolean);
+};
+function pgPresto() { $('main').innerHTML = '<div class="empty">Pagina in preparazione.</div>'; }
+function disegnaMenu() {
+  $('tabs').innerHTML = MENU().map(m => m.t ? `<div class="nav-title">${m.t}</div>` : `<button class="tab-btn ${S.page === m.id ? 'active' : ''}" data-p="${m.id}">${m.n}</button>`).join('');
+  document.querySelectorAll('#prodsel button').forEach(b => b.classList.toggle('on', b.dataset.p === S.prod));
+  $('side-t').innerHTML = 'Dati produttivi<small>' + PRODOTTI[S.prod] + '</small>';
+}
+async function vai(id) {
+  if (CUR.dirty && V[CUR.tipo] === 'giorno' && (S.page === 'lavaggi' || S.page === 'lavorazioni')) { const r = await chiediSalvataggio(); if (r === 'annulla') return; }
+  const m = MENU().find(x => x.id === id) || MENU().find(x => x.id); S.page = m.id; try { sessionStorage.setItem('dp_page', S.page); } catch (e) { }
+  CUR.tipo = null; CUR.dirty = false; nascondiSomma(); nascondiTip(); disegnaMenu(); window.scrollTo(0, 0);
+  $('main').innerHTML = '<div class="empty">Carico…</div>';
+  try { await m.f(); } catch (e) { console.error(e); $('main').innerHTML = `<div class="errbox" style="margin:20px">Errore: ${esc(e.message || e)}</div>`; }
+}
+async function cambiaProdotto(p) {
+  if (p === S.prod) return;
+  if (CUR.dirty && (S.page === 'lavaggi' || S.page === 'lavorazioni')) { const r = await chiediSalvataggio(); if (r === 'annulla') return; }
+  S.prod = p; try { localStorage.setItem('dp_prod', p); } catch (e) { }
+  CUR.tipo = null; CUR.dirty = false;
+  if (!MENU().find(x => x.id === S.page)) S.page = 'lavaggi';
+  await vai(S.page);
+}
+async function caricaBase() {
+  const [imp, cod] = await Promise.all([DB.tutteImp(), DB.tuttiCodici()]);
+  Object.assign(IMP, imp);
+  ['PR', 'GP'].forEach(p => { PAR[p] = { ...PARAM_DEF[p], ...(imp['param_' + p] || {}) }; CODICI[p] = {}; });
+  cod.forEach(c => { CODICI[c.prodotto][c.matricola] = c.codice; });
+}
+async function avviaApp() {
+  $('login').hidden = true; $('app').hidden = false;
+  $('btn-esci').hidden = DEMO; $('demo-badge').hidden = !DEMO;
+  try { S.prod = localStorage.getItem('dp_prod') === 'GP' ? 'GP' : 'PR'; } catch (e) { }
+  try { await caricaBase(); } catch (e) { toast('Lettura dati non riuscita: ' + (e.message || e), true); }
+  const p = (() => { try { return sessionStorage.getItem('dp_page'); } catch (e) { return null; } })();
+  S.page = MENU().find(x => x.id === p) ? p : 'lavaggi';
+  await vai(S.page);
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) vai(b.dataset.p); });
+$('prodsel').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) cambiaProdotto(b.dataset.p); });
+$('btn-aggiorna').addEventListener('click', async () => {
+  if (CUR.dirty) return toast('Salva prima la giornata aperta', true);
+  Object.keys(CACHE).forEach(k => delete CACHE[k]); lsDelPrefix(); INFO.PR.clear(); INFO.GP.clear(); REG.clear();
+  try { await caricaBase(); } catch (e) { }
+  await vai(S.page); toast('Dati aggiornati');
+});
+$('btn-esci').addEventListener('click', async () => { if (sb) await sb.auth.signOut(); location.reload(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { chiudiModal(); chiudiFiltroPop(); } });
+(async function avvia() {
+  if (DEMO) return avviaApp();
+  const { data } = await sb.auth.getSession();
+  if (data.session && String(data.session.user.email).toLowerCase() === EMAIL_PAOLO) return avviaApp();
+  $('login').hidden = false; $('login-pw').focus();
+  $('login-form').addEventListener('submit', async e => {
+    e.preventDefault(); $('login-err').textContent = '';
+    const { error } = await sb.auth.signInWithPassword({ email: EMAIL_PAOLO, password: $('login-pw').value });
+    if (error) { $('login-err').textContent = 'Password errata'; return; }
+    avviaApp();
+  });
+})();
+</script></body></html>
