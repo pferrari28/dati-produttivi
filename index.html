@@ -897,7 +897,6 @@ function controlli(tipo, i) {
   const facolt = tipo === 'lavaggi' && senzaMatr(S.prod, r);
   if (!facolt) ['matr', 'mese', 'anno'].forEach(k => {
     if (vuoto(r[k])) E(k, k === 'matr' ? 'Matricola mancante' : k === 'mese' ? 'Mese mancante' : 'Anno mancante');
-    else if (manuale) o[k] = { lv: 'r', m: 'Lotto non trovato nel Registro lotti: dato inserito a mano' };
   });
   // stesso lotto con dati diversi nella giornata
   const comb = x => normMatr(x.matr) + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
@@ -970,7 +969,7 @@ function disegnaFoglio() {
   const body = CUR.righe.map((r, i) => `<tr data-i="${i}">${celleRiga(tipo, i, cols)}</tr>`).join('');
   box.innerHTML = `<div class="sheet-wrap"><table class="sheet" id="foglio-t"><thead><tr><th style="width:38px">#</th>${th}<th></th></tr></thead><tbody>${body}</tbody><tfoot id="foglio-f"></tfoot></table></div>
     <div class="addrow"><button class="btn ghost sm" id="btn-riga">+ Aggiungi riga</button><span class="note">Frecce per spostarti · Invio scende · le celle numeriche accettano somme (es. 12+24+79) · gialle e rosse sono solo avvisi: puoi salvare comunque.</span></div>
-    <div class="legend"><span class="le">Errore</span><span class="lw">Avviso</span><span class="lr">Dato inserito a mano (lotto non nel registro)</span></div>`;
+    <div class="legend"><span class="le">Errore</span><span class="lw">Avviso</span></div>`;
   aggiornaPiede();
 }
 function aggiornaPiede() {
