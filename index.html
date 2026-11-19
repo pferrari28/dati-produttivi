@@ -225,6 +225,7 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
   #print-area th{background:#e8e8e8;}
   #print-area td.r{text-align:right;}
   #print-area tr.tot td{font-weight:bold;background:#f0f0f0;}
+  #print-area.alto tr.tot td{font-size:13pt;font-weight:900;border-top:2px solid #000;}
   #print-area tr{page-break-inside:avoid;}
   #print-area thead{display:table-header-group;}
   #print-area.centra td,#print-area.centra th{text-align:center !important;}
@@ -1495,7 +1496,14 @@ async function pgPolpa() {
   $('polpa-oggi').onclick = () => { INTERVALLO.polpa = { da: isoOggi(), a: isoOggi() }; pgPolpa(); };
   $('polpa-da').onchange = $('polpa-a').onchange = carica;
   $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
-    if (x === 'stampa') stampaTabella(T, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape', true, true); else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
+    if (x === 'stampa') {
+      let TS = T;
+      if (gp) {                                   // Grana Padano: in stampa una sola colonna con polpa + 18% dei piatti (taglio liscio), senza distinguerli
+        const cols = T.cols.filter(c => c.k !== 'q' && c.k !== 'ab'), vis = T.vis.map(r => ({ ...r, polpa: r.polpa == null && !num(r.q) ? null : r.ab }));
+        TS = { cols, vis, totali: v => { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } };
+      }
+      stampaTabella(TS, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape', true, true);
+    } else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
   await carica();
 }
 
