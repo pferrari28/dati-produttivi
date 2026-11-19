@@ -236,6 +236,10 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet td[data-cod="ALTRO"]{background-color:#DCCDF6!important;}
 .sheet td[data-cod]{font-weight:600;}
 @media print{.sheet td[data-cod]{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+
+#foglio-t th.fg{cursor:pointer;}
+#foglio-t th.fg:hover{background:#E3EAF2;}
+#foglio-t th.fg.on{color:#1F6FEB;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -965,18 +969,68 @@ function disegnaFoglio() {
   const tipo = CUR.tipo, cols = colsGiorno(tipo), box = $('foglio');
   if (!box) return;
   while (CUR.righe.length < RIGHE_MIN) CUR.righe.push(TIPI[tipo].vuota());
-  const th = cols.map(c => `<th ${c.w ? `style="min-width:${c.w}px"` : ''}>${esc(c.l)}</th>`).join('');
+  const th = cols.map((c, ci) => `<th data-c="${ci}" class="fg${FG[c.k] ? ' on' : ''}" title="Clic: filtra" ${c.w ? `style="min-width:${c.w}px"` : ''}>${esc(c.l)}<span class="ar">${FG[c.k] ? ' ⏷' : ''}</span></th>`).join('');
   const body = CUR.righe.map((r, i) => `<tr data-i="${i}">${celleRiga(tipo, i, cols)}</tr>`).join('');
   box.innerHTML = `<div class="sheet-wrap"><table class="sheet" id="foglio-t"><thead><tr><th style="width:38px">#</th>${th}<th></th></tr></thead><tbody>${body}</tbody><tfoot id="foglio-f"></tfoot></table></div>
     <div class="addrow"><button class="btn ghost sm" id="btn-riga">+ Aggiungi riga</button><span class="note">Frecce per spostarti · Invio scende · le celle numeriche accettano somme (es. 12+24+79) · gialle e rosse sono solo avvisi: puoi salvare comunque.</span></div>
     <div class="legend"><span class="le">Errore</span><span class="lw">Avviso</span></div>`;
-  aggiornaPiede();
+  applicaFiltriGiorno(); aggiornaPiede();
 }
 function aggiornaPiede() {
   const tipo = CUR.tipo, cols = colsGiorno(tipo), t = totaliGiorno(tipo, cols), f = $('foglio-f'); if (!f) return;
   f.innerHTML = '<tr><td class="lbl">Σ</td>' + cols.map((c, ci) => ci === 0 ? '<td class="lbl">Totale giornata</td>' : c.tot ? `<td>${c.t === 'int' ? fmtKg0(t[c.k]) : fmtKg(t[c.k])}</td>` : '<td></td>').join('') + '<td></td></tr>';
 }
 let FOCUS_NEXT = null;
+// ---- filtri stile Excel sulla giornata (nascondono le righe, non toccano i dati) ----
+let FG = {};
+const testoCella = (tr, ci) => { const td = tr.querySelector(`td[data-c="${ci}"]`); if (!td) return ''; const inp = td.querySelector('input'); return (inp ? inp.value : td.textContent).trim(); };
+function applicaFiltriGiorno() {
+  const cols = colsGiorno(CUR.tipo), att = cols.map((c, ci) => FG[c.k] ? [ci, FG[c.k]] : null).filter(Boolean);
+  document.querySelectorAll('#foglio-t tbody tr').forEach(tr => {
+    const r = CUR.righe[+tr.dataset.i]; let ok = true;
+    if (att.length && r && !rigaVuota(r)) ok = att.every(([ci, set]) => set.has(testoCella(tr, ci) || VUOTA));
+    tr.style.display = ok ? '' : 'none';
+  });
+  document.querySelectorAll('#foglio-t th.fg').forEach(th => { const c = cols[+th.dataset.c], on = !!FG[c.k]; th.classList.toggle('on', on); th.querySelector('.ar').textContent = on ? ' ⏷' : ''; });
+}
+function apriFiltroGiorno(th) {
+  chiudiFiltroPop();
+  const cols = colsGiorno(CUR.tipo), ci = +th.dataset.c, c = cols[ci], conta = new Map();
+  document.querySelectorAll('#foglio-t tbody tr').forEach(tr => {
+    const r = CUR.righe[+tr.dataset.i]; if (!r || rigaVuota(r)) return;
+    if (cols.some((x, xi) => x.k !== c.k && FG[x.k] && !FG[x.k].has(testoCella(tr, xi) || VUOTA))) return;
+    const v = testoCella(tr, ci) || VUOTA; conta.set(v, (conta.get(v) || 0) + 1);
+  });
+  const num_ = s => parseFloat(String(s).replace(/\./g, '').replace(',', '.')), numerico = c.t === 'kg' || c.t === 'int' || c.t === 'i' || c.t === 'ov' || c.t === 'kgf' || c.t === 'mese' || c.t === 'anno';
+  const valori = [...conta.keys()].sort((a, b) => a === VUOTA ? -1 : b === VUOTA ? 1 : numerico ? num_(a) - num_(b) : a.localeCompare(b, 'it', { numeric: true }));
+  const att = FG[c.k], scelti = new Set(att ? [...att] : valori);
+  const pop = document.createElement('div'); pop.className = 'filtro-pop'; pop.id = 'filtro-pop';
+  pop.innerHTML = `<div class="fp-tit">${esc(c.l)}</div><input class="fp-cerca" placeholder="Cerca…"><div class="fp-lista"></div>
+    <div class="fp-btn"><button class="btn sm" data-o="ok">OK</button><button class="btn sm ghost" data-o="canc">Annulla</button><button class="btn sm ghost" data-o="clear" style="margin-left:auto">Cancella filtro</button></div>`;
+  document.body.appendChild(pop);
+  const rc = th.getBoundingClientRect(); pop.style.left = Math.max(4, Math.min(rc.left + scrollX, innerWidth - 290 + scrollX)) + 'px'; pop.style.top = (rc.bottom + scrollY + 2) + 'px';
+  const lista = pop.querySelector('.fp-lista'), cerca = pop.querySelector('.fp-cerca');
+  const disegnaLista = () => {
+    const q = cerca.value.trim().toLowerCase(), vv = valori.filter(v => !q || v.toLowerCase().includes(q));
+    lista.innerHTML = `<label class="fp-v fp-tutti"><input type="checkbox" data-t="1" ${vv.every(v => scelti.has(v)) ? 'checked' : ''}> (Seleziona tutto)</label>` +
+      vv.map(v => `<label class="fp-v"><input type="checkbox" data-v="${esc(v)}" ${scelti.has(v) ? 'checked' : ''}> ${esc(v)}<i>${conta.get(v)}</i></label>`).join('');
+  };
+  disegnaLista(); cerca.focus();
+  cerca.addEventListener('input', () => { const q = cerca.value.trim().toLowerCase(); scelti.clear(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => scelti.add(v)); disegnaLista(); });
+  lista.addEventListener('change', e => {
+    const i = e.target; if (i.dataset.t) { const q = cerca.value.trim().toLowerCase(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => i.checked ? scelti.add(v) : scelti.delete(v)); }
+    else i.checked ? scelti.add(i.dataset.v) : scelti.delete(i.dataset.v);
+    disegnaLista();
+  });
+  pop.addEventListener('click', e => {
+    const o = e.target.dataset.o; if (!o) return;
+    if (o === 'canc') { chiudiFiltroPop(); return; }
+    if (o === 'clear') delete FG[c.k]; else if (valori.every(v => scelti.has(v))) delete FG[c.k]; else FG[c.k] = new Set(scelti);
+    chiudiFiltroPop(); applicaFiltriGiorno();
+  });
+  pop.addEventListener('mousedown', e => e.stopPropagation());
+}
+document.addEventListener('click', e => { const th = e.target.closest && e.target.closest('#foglio-t th.fg'); if (th) apriFiltroGiorno(th); });
 function aggiornaRiga(i) {                              // ricalcola celle calcolate, errori e piede (senza perdere il cursore)
   const tipo = CUR.tipo, cols = colsGiorno(tipo), tr = document.querySelector(`#foglio-t tbody tr[data-i="${i}"]`); if (!tr) return;
   const att = document.activeElement;
@@ -1110,7 +1164,8 @@ function eventiFoglio(box) {
       let guard = 0;
       while (guard++ < 30) {
         const t2 = document.querySelector(`#foglio-t td[data-i="${ni}"][data-c="${nc}"]`);
-        if (!t2) return; const in2 = t2.querySelector('input');
+        if (!t2) return; if (t2.parentElement.style.display === 'none') { ni += di || 1; if (ni < 0 || ni >= CUR.righe.length) return; continue; }
+        const in2 = t2.querySelector('input');
         if (in2) { in2.focus(); return; }
         if (dc === 0) return; nc += dc; if (nc < 0 || nc >= cols.length) return;
       }
@@ -1165,6 +1220,7 @@ function chiudiSelezioneFoglio() {
 
 // ---- caricamento / salvataggio di una giornata ----
 async function apriGiorno(tipo, data) {
+  if (CUR.data !== data || CUR.tipo !== tipo) FG = {};
   CUR.tipo = tipo; CUR.data = data; DATA_SEL[tipo] = data; MESE_SEL[tipo] = meseKey(data);
   const mese = await DB.mese(TIPI[tipo].tab, S.prod, meseKey(data));
   const g = mese.get(data);
@@ -1286,6 +1342,7 @@ async function pgElenco(tipo) {
 
 // ---- pagina ----
 async function pgGiorno(tipo) {
+  FG = {};
   const main = $('main'), vista = V[tipo];
   main.innerHTML = `<div class="page-title"><h2>${TIPI[tipo].nome} · ${PRODOTTI[S.prod]}</h2></div>
     <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button></div>
