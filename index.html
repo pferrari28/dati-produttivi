@@ -1702,6 +1702,10 @@ async function trovaRiga(prod, n) {
   if (DEMO) { const o = demoGet('dp_giornate') || {}; for (const [k, v] of Object.entries(o)) { if (!k.startsWith(prod + '|')) continue; const r = (v.dati || []).find(x => x.n === n); if (r) return { data: k.split('|')[1], riga: r }; } return null; }
   const r = ok(await sb.rpc('dp_riga_lavorazione', { p_prodotto: prod, p_n: n })); return r.data && r.data[0] ? { data: r.data[0].data, riga: r.data[0].riga } : null;
 }
+async function trovaRighe(prod, lo, hi) {                 // righe con numero tra lo e hi, qualunque sia la data
+  if (DEMO) { const o = demoGet('dp_giornate') || {}, out = []; for (const [k, v] of Object.entries(o)) { if (!k.startsWith(prod + '|')) continue; (v.dati || []).forEach(r => { const n = num(r.n); if (n >= lo && n <= hi) out.push({ data: k.split('|')[1], riga: r }); }); } return out.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : num(a.riga.n) - num(b.riga.n))); }
+  const r = ok(await sb.rpc('dp_righe_lavorazione', { p_prodotto: prod, p_da: lo, p_a: hi })); return (r.data || []).map(x => ({ data: x.data, riga: x.riga }));
+}
 async function pgCarpi() {
   const main = $('main'), chiave = 'carpi_' + S.prod; let righe = ((IMP[chiave] && IMP[chiave].righe) || []).slice();
   while (righe.length < 5) righe.push('');
@@ -1732,21 +1736,32 @@ async function pgCarpi() {
 }
 
 // ---------- Scheda consorzio (solo Grana Padano) ----------
-const CONS = { da: '', a: '', pag: 0, note: {} };
+const CONS = { da: '', a: '', rda: '', ra: '', pag: 0, note: {} };
 async function pgConsorzio() {
   const main = $('main'), off = (IMP.consorzio_offset && IMP.consorzio_offset.v) || { x: 0, y: 0 };
   main.innerHTML = `<div class="page-title"><h2>Scheda consorzio · ${PRODOTTI[S.prod]}</h2></div>
-    <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button><button class="btn ghost sm" id="cs-azz" title="Svuota le date">Azzera date</button>
+    <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button><button class="btn ghost sm" id="cs-azz" title="Svuota date e righe">Azzera</button>
+      <label>Stampa da riga n.<input id="cs-rda" style="width:80px" inputmode="numeric" value="${CONS.rda}"></label><label>a riga n.<input id="cs-ra" style="width:80px" inputmode="numeric" value="${CONS.ra}"></label>
       <label>Spostamento X (mm)<input id="cs-x" style="width:80px" value="${off.x}"></label><label>Spostamento Y (mm)<input id="cs-y" style="width:80px" value="${off.y}"></label></div>
-    <div class="fb"><button class="btn ghost sm" id="cs-p">◀ Scheda precedente</button><b id="cs-pag"></b><button class="btn ghost sm" id="cs-n">Scheda successiva ▶</button><button class="btn amber sm" id="cs-st">Stampa su modulo prestampato</button><button class="btn ghost sm" id="cs-stc">Stampa con intestazioni</button><button class="btn ghost sm" id="cs-xl">Esporta Excel</button></div><div id="cs-corpo"></div>`;
+    <div class="fb"><button class="btn ghost sm" id="cs-p">◀ Scheda precedente</button><b id="cs-pag"></b><button class="btn ghost sm" id="cs-n">Scheda successiva ▶</button><button class="btn amber sm" id="cs-st">Stampa su modulo prestampato</button><button class="btn ghost sm" id="cs-stc">Stampa con intestazioni</button><button class="btn amber sm" id="cs-sta" title="Tutte le schede da 15 righe, una per pagina, sul modulo prestampato">Stampa tutte le schede</button><button class="btn ghost sm" id="cs-stac">Stampa tutte con intestazioni</button><button class="btn ghost sm" id="cs-xl">Esporta Excel</button></div><div id="cs-corpo"></div>`;
   let righe = [];
   const carica = async () => {
-    const t1 = $('cs-da').value.trim(), t2 = $('cs-a').value.trim(); if (!t1 && !t2) { $('cs-corpo').innerHTML = '<div class="empty">Scrivi le date da stampare (per esempio 181126).</div>'; $('cs-pag').textContent = ''; return; }
-    const an = +(CONS.da || isoOggi()).slice(0, 4), da = parseData(t1 || t2, an), a = parseData(t2 || t1, an); if (!da || !a) return toast('Date non valide (scrivi per esempio 181126)', true);
-    CONS.da = da <= a ? da : a; CONS.a = da <= a ? a : da;
-    const mappa = await mesiIntervallo('dp_giornate', CONS.da, CONS.a); righe = [];
-    const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)))]; await caricaInfo(S.prod, lotti);
-    [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab }); }));
+    const t1 = $('cs-da').value.trim(), t2 = $('cs-a').value.trim(), n1 = parseInt($('cs-rda').value, 10), n2 = parseInt($('cs-ra').value, 10);
+    const lo = !isNaN(n1) ? n1 : n2, hi = !isNaN(n2) ? n2 : n1, conRighe = !isNaN(lo), conDate = !!(t1 || t2);
+    CONS.rda = $('cs-rda').value.trim(); CONS.ra = $('cs-ra').value.trim();
+    if (!conDate && !conRighe) { $('cs-corpo').innerHTML = '<div class="empty">Scrivi le date da stampare (per esempio 181126) oppure i numeri di riga (da riga n. … a riga n. …).</div>'; $('cs-pag').textContent = ''; righe = []; return; }
+    let elenco = [];                                              // [{data, r}]
+    if (conDate) {
+      const an = +(CONS.da || isoOggi()).slice(0, 4), da = parseData(t1 || t2, an), a = parseData(t2 || t1, an); if (!da || !a) return toast('Date non valide (scrivi per esempio 181126)', true);
+      CONS.da = da <= a ? da : a; CONS.a = da <= a ? a : da;
+      const mappa = await mesiIntervallo('dp_giornate', CONS.da, CONS.a);
+      [...mappa.keys()].sort().forEach(d => mappa.get(d).dati.forEach(r => { if (!conRighe || (num(r.n) >= Math.min(lo, hi) && num(r.n) <= Math.max(lo, hi))) elenco.push({ data: d, r }); }));
+    } else {
+      if (Math.abs(hi - lo) > 299) return toast('Scegli al massimo 300 righe alla volta', true);
+      elenco = (await trovaRighe(S.prod, Math.min(lo, hi), Math.max(lo, hi))).map(x => ({ data: x.data, r: x.riga }));
+    }
+    const lotti = [...new Set(elenco.map(x => x.r.lotto))]; await caricaInfo(S.prod, lotti); righe = [];
+    elenco.forEach(({ data: d, r }) => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab }); });
     CONS.pag = 0; disegna();
   };
   const pagine = () => Math.max(1, Math.ceil(righe.length / 15));
@@ -1758,17 +1773,23 @@ async function pgConsorzio() {
     $('cs-corpo').innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro"><thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note: kg utilizzati o conto lavoro</th></tr></thead><tbody>${pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td style="padding:0"><input data-nr="${CONS.pag * 15 + i}" value="${esc(CONS.note[CONS.pag * 15 + i] || '')}" style="border:0;width:220px;font:inherit;padding:5px 8px"></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="10" class="lbl" style="text-align:right">Totale sfridi</td><td>${fmtKg(tot)}</td><td></td></tr></tfoot></table></div><p class="note" style="margin-top:8px">Massimo 15 righe per scheda. La colonna Note è solo per la stampa (non viene salvata).</p>`;
   };
   $('cs-corpo').addEventListener('input', e => { if (e.target.dataset.nr != null) CONS.note[e.target.dataset.nr] = e.target.value; });
-  const stampa = (completa) => {
-    const pr = paginaRighe(), tot = pr.reduce((s, r) => s + num(r.sfridi), 0), ox = parseNum($('cs-x').value) || 0, oy = parseNum($('cs-y').value) || 0;
-    DB.setImp('consorzio_offset', { v: { x: ox, y: oy } }).catch(() => { });
-    const body = pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td>${esc(CONS.note[CONS.pag * 15 + i] || '')}</td></tr>`).join('');
+  const pagHtml = (p, completa, ox, oy, ultima) => {
+    const pr = righe.slice(p * 15, p * 15 + 15), tot = pr.reduce((s, r) => s + num(r.sfridi), 0);
+    const body = pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td>${esc(CONS.note[p * 15 + i] || '')}</td></tr>`).join('');
     const head = completa ? `<thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note</th></tr></thead>` : '';
-    stampaHTML('Scheda consorzio', completa ? 'TRENTIN SPA · PEGOGNAGA (MN)' : '', `<div style="position:relative;left:${ox}mm;top:${oy}mm"><table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:right">Totale sfridi</td><td class="r">${fmtKg(tot)}</td><td></td></tr></tbody></table></div>`, 'landscape');
+    return `<div style="position:relative;left:${ox}mm;top:${oy}mm;${ultima ? '' : 'page-break-after:always;'}"><table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:right">Totale sfridi</td><td class="r">${fmtKg(tot)}</td><td></td></tr></tbody></table></div>`;
   };
-  $('cs-st').onclick = () => righe.length && stampa(false); $('cs-stc').onclick = () => righe.length && stampa(true);
+  const stampa = (completa, tutte) => {
+    const ox = parseNum($('cs-x').value) || 0, oy = parseNum($('cs-y').value) || 0;
+    DB.setImp('consorzio_offset', { v: { x: ox, y: oy } }).catch(() => { });
+    const idx = tutte ? Array.from({ length: pagine() }, (_, i) => i) : [CONS.pag];
+    stampaHTML('Scheda consorzio', completa ? 'TRENTIN SPA · PEGOGNAGA (MN)' : '', idx.map((p, k) => pagHtml(p, completa, ox, oy, k === idx.length - 1)).join(''), 'landscape');
+  };
+  $('cs-st').onclick = () => righe.length && stampa(false, false); $('cs-stc').onclick = () => righe.length && stampa(true, false);
+  $('cs-sta').onclick = () => righe.length && stampa(false, true); $('cs-stac').onclick = () => righe.length && stampa(true, true);
   $('cs-xl').onclick = () => { const v = paginaRighe(); scarica(xlsxSemplice([{ nome: 'Scheda consorzio', righe: [[...cols.map(c => c.l), 'Note'], ...v.map((r, i) => [...cols.map(c => { const x = r[c.k]; return (c.t === 'kg' || c.t === 'i') ? (x == null ? '' : +x) : c.t === 'd' ? isoToIt(x) : (x ?? ''); }), CONS.note[CONS.pag * 15 + i] || ''])], grassetto: [0], larghezze: [6, 12, 14, 16, 12, 10, 10, 12, 14, 14, 12, 30] }]), `SchedaConsorzio_${CONS.da}_${CONS.pag + 1}.xlsx`); };
   $('cs-p').onclick = () => { if (CONS.pag > 0) { CONS.pag--; disegna(); } }; $('cs-n').onclick = () => { if (CONS.pag < pagine() - 1) { CONS.pag++; disegna(); } };
-  $('cs-da').onchange = $('cs-a').onchange = carica; $('cs-azz').onclick = () => { CONS.da = CONS.a = ''; pgConsorzio(); }; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
+  $('cs-da').onchange = $('cs-a').onchange = $('cs-rda').onchange = $('cs-ra').onchange = carica; $('cs-azz').onclick = () => { CONS.da = CONS.a = CONS.rda = CONS.ra = ''; pgConsorzio(); }; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
   await carica();
 }
 // ====== Guscio: menu, selettore prodotto, login, avvio ======

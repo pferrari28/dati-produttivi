@@ -149,3 +149,20 @@ as $$
 $$;
 grant execute on function public.dp_riga_lavorazione(text, integer) to authenticated;
 revoke execute on function public.dp_riga_lavorazione(text, integer) from anon, public;
+
+
+-- Scheda consorzio: righe di lavorazione con numero tra p_da e p_a (qualunque data), max 300
+create or replace function public.dp_righe_lavorazione(p_prodotto text, p_da integer, p_a integer)
+returns table(data date, riga jsonb)
+language sql stable set search_path to 'public'
+as $$
+  select g.data, r.v
+  from dp_giornate g
+  cross join lateral jsonb_array_elements(g.dati) r(v)
+  where g.prodotto = p_prodotto and (r.v->>'n') ~ '^[0-9]+$'
+    and (r.v->>'n')::int between least(p_da, p_a) and greatest(p_da, p_a)
+  order by g.data, (r.v->>'n')::int
+  limit 300
+$$;
+grant execute on function public.dp_righe_lavorazione(text, integer, integer) to authenticated;
+revoke execute on function public.dp_righe_lavorazione(text, integer, integer) from anon, public;
