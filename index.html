@@ -827,7 +827,7 @@ function stampaTabella(T, titolo, sub, orient, alto, centra) {
   const v = T.vis, tot = T.totali(v), cols = T.cols;
   const th = cols.map(c => `<th${c.pw ? ` style="width:${c.pw};min-width:${c.pw};${c.pwMax ? `max-width:${c.pw};` : ''}"` : ''}>${esc(c.l)}</th>`).join('');   // pw: larghezza di stampa
   const tb = v.map(r => '<tr>' + cols.map(c => `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('') + '</tr>').join('');
-  const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === 0 ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
+  const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === (T.etNear ? Math.max(0, cols.findIndex(x => x.tot) - 1) : 0) ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
   stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient, alto, centra);
 }
 const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghost sm" data-x="stampa">Stampa / PDF</button><button class="btn ghost sm" data-x="xlsx">Esporta Excel</button></span>`;
@@ -1497,10 +1497,10 @@ async function pgPolpa() {
   $('polpa-da').onchange = $('polpa-a').onchange = carica;
   $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
     if (x === 'stampa') {
-      let TS = T;
+      let TS = { ...T, cols: T.cols.map(c => c.k === 'forme' ? { ...c, tot: 0 } : c), etNear: true };      // totale solo sui kg, con la scritta TOTALE nella cella accanto
       if (gp) {                                   // Grana Padano: in stampa una sola colonna con polpa + 18% dei piatti (taglio liscio), senza distinguerli
-        const cols = T.cols.filter(c => c.k !== 'q' && c.k !== 'ab'), vis = T.vis.map(r => ({ ...r, polpa: r.polpa == null && !num(r.q) ? null : r.ab }));
-        TS = { cols, vis, totali: v => { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } };
+        const cols = TS.cols.filter(c => c.k !== 'q' && c.k !== 'ab'), vis = T.vis.map(r => ({ ...r, polpa: r.polpa == null && !num(r.q) ? null : r.ab }));
+        TS = { ...TS, cols, vis, totali: v => { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } };
       }
       stampaTabella(TS, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape', true, true);
     } else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
