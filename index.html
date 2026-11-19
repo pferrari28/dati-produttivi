@@ -488,6 +488,8 @@ const infoLotto = (prod, l) => INFO[prod].get(l) || null;
 
 // ---------- calcoli ----------
 const par = () => PAR[S.prod];
+const SENZA_MATR = ['BON', 'GRAN BON', 'RETINATO', 'SBIANCATO'];       // per questi codici matricola e mese/anno non sono obbligatori
+const senzaMatr = (prod, r) => SENZA_MATR.includes(String(codiceDi(prod, r)).toUpperCase());
 const codiceDi = (prod, r) => r.cod ? r.cod : (CODICI[prod][normMatr(r.matr)] || '');
 function stagionatura(dataIso, mese, anno) {
   if (!dataIso || !mese || !anno) return null;
@@ -874,7 +876,8 @@ function controlli(tipo, i) {
   if (!r.lotto) E('lotto', 'Lotto mancante'); else if (!RE_LOTTO.test(r.lotto)) E('lotto', 'Lotto non valido (es. 26P123 oppure P1792)');
   const reg = REG.get(r.lotto), info = tipo === 'lavorazioni' ? infoLotto(S.prod, r.lotto) : null;
   const manuale = RE_LOTTO.test(r.lotto || '') && !reg && !info && REG.has(r.lotto);
-  ['matr', 'mese', 'anno'].forEach(k => {
+  const facolt = tipo === 'lavaggi' && senzaMatr(S.prod, r);
+  if (!facolt) ['matr', 'mese', 'anno'].forEach(k => {
     if (vuoto(r[k])) E(k, k === 'matr' ? 'Matricola mancante' : k === 'mese' ? 'Mese mancante' : 'Anno mancante');
     else if (manuale) o[k] = { lv: 'r', m: 'Lotto non trovato nel Registro lotti: dato inserito a mano' };
   });
@@ -1158,7 +1161,7 @@ const rigaVuota = r => !(r.lotto || r.forme || r.sporco || r.polpa || r.fmt || r
 
 async function conflittiLotti() {
   const tipo = CUR.tipo, qui = {};
-  CUR.righe.forEach((r, i) => { if (r.lotto && RE_LOTTO.test(r.lotto)) (qui[r.lotto] = qui[r.lotto] || []).push({ r, i }); });
+  CUR.righe.forEach((r, i) => { if (r.lotto && RE_LOTTO.test(r.lotto) && !(tipo === 'lavaggi' && senzaMatr(S.prod, r))) (qui[r.lotto] = qui[r.lotto] || []).push({ r, i }); });
   const lotti = Object.keys(qui); if (!lotti.length) return [];
   await caricaRegistro(lotti);
   const [inf, lav] = await Promise.all([tipo === 'lavorazioni' ? caricaInfo(S.prod, lotti) : null, DB.lottiLavorazioni(S.prod, lotti, tipo === 'lavorazioni' ? CUR.data : null)]);
@@ -1443,13 +1446,13 @@ async function pgBackup() {
         let mk = '2025-12'; const fine = meseKey(isoOggi());
         while (mk <= fine) {
           const mappa = await DB.mese(tab, S.prod, mk);
-          const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.filter(r => r.lotto && (vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno))).map(r => r.lotto)))];
+          const lotti = [...new Set([...mappa.values()].flatMap(g => g.dati.filter(r => r.lotto && (vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno)) && !(tab === 'dp_lavaggi' && senzaMatr(S.prod, r))).map(r => r.lotto)))];
           if (lotti.length) {
             await caricaRegistro(lotti); if (tab === 'dp_giornate') await caricaInfo(S.prod, lotti);
             for (const [data, g] of mappa) {
               let mod = false;
               g.dati.forEach(r => {
-                if (!r.lotto || !(vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno))) return;
+                if (!r.lotto || !(vuoto(r.matr) || vuoto(r.mese) || vuoto(r.anno)) || (tab === 'dp_lavaggi' && senzaMatr(S.prod, r))) return;
                 const reg = REG.get(r.lotto), inf = tab === 'dp_giornate' ? infoLotto(S.prod, r.lotto) : null, d = inf && inf.matr ? inf : reg;
                 if (!d) { restano.add(r.lotto); return; }
                 ['matr', 'mese', 'anno'].forEach(f => { if (vuoto(r[f]) && !vuoto(d[f])) { r[f] = d[f]; mod = true; cambiate++; } });
