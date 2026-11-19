@@ -254,6 +254,11 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet.tab-ro tr td.negpf,.sheet.tab-ro tr.ult td.negpf,.sheet.tab-ro tr:hover td.negpf{background-color:#FF7F7F!important;color:#5A0000!important;}
 .sheet.tab-ro thead th{top:0;}
 .sheet thead th{top:0;}
+.sheet thead th{z-index:10;}
+.sheet td input{position:relative;z-index:0;}
+.sheet thead th{transform:translateZ(0);}
+.sheet{border-collapse:separate;border-spacing:0;}
+.sheet td,.sheet th{border-width:0 1px 1px 0;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
