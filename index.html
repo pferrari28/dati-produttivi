@@ -233,6 +233,7 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet td[data-cod="MEZZANO"],.sheet td[data-cod="GRAN BON"]{background-color:#FFF0A0!important;}
 .sheet td[data-cod="BIO"],.sheet td[data-cod="RETINATO"]{background-color:#C6EBC0!important;}
 .sheet td[data-cod="SBIANCATO"]{background-color:#FFD08A!important;}
+.sheet td[data-cod="ALTRO"]{background-color:#DCCDF6!important;}
 .sheet td[data-cod]{font-weight:600;}
 @media print{.sheet td[data-cod]{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head>
@@ -657,7 +658,7 @@ function Tabella(cont, opt) {
         const neg = (c.t === 'kg' && r[c.k] < 0) ? ' style="color:var(--danger)"' : '';
         const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
         const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
-        const cod = COLORI_COD.includes(String(x).trim().toUpperCase()) ? ` data-cod="${esc(String(x).trim().toUpperCase())}"` : '';
+        const gc = (c.k === 'cod' || c.k === 'codice' || c.k === 'codart') ? gruppoCod(x) : '', cod = gc ? ` data-cod="${gc}"` : '';
         return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}>${esc(x)}</td>`;
       }).join('') + '</tr>';
     }).join('');
@@ -995,8 +996,16 @@ function aggiornaRiga(i) {                              // ricalcola celle calco
 function aggiornaTutteRighe() { CUR.righe.forEach((_, i) => aggiornaRiga(i)); tintaCodici(); }
 // colori dei codici articolo (giallo/verde/arancione) anche nelle celle modificabili
 const COLORI_COD = ['MEZZANO', 'BIO', 'GRAN BON', 'RETINATO', 'SBIANCATO'];
+// gruppo colore di un codice: BIOLOGICO = BIO, BON = GRAN BON; testi diversi da quelli noti (ALPE DEL GARDA, VALTIDONE…) = ALTRO; i codici numerici non si colorano
+function gruppoCod(v) {
+  const s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g, ' ');
+  if (!s || /^[0-9.,\-\/ ]+$/.test(s)) return '';
+  if (s === 'BIOLOGICO') return 'BIO';
+  if (s === 'BON') return 'GRAN BON';
+  return COLORI_COD.includes(s) ? s : 'ALTRO';
+}
 function tintaCodici() {
-  document.querySelectorAll('#foglio-t td[data-f="cod"]').forEach(td => { const inp = td.querySelector('input'), v = inp ? inp.value.trim().toUpperCase() : ''; if (COLORI_COD.includes(v)) td.dataset.cod = v; else delete td.dataset.cod; });
+  document.querySelectorAll('#foglio-t td[data-f="cod"]').forEach(td => { const inp = td.querySelector('input'), g = inp ? gruppoCod(inp.value) : ''; if (g) td.dataset.cod = g; else delete td.dataset.cod; });
 }
 ['input', 'change', 'focusout'].forEach(ev => document.addEventListener(ev, e => { if (e.target.closest && e.target.closest('td[data-f="cod"]')) setTimeout(tintaCodici, 0); }));
 
