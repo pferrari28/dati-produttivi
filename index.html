@@ -227,6 +227,8 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
   #print-area tr.tot td{font-weight:bold;background:#f0f0f0;}
   #print-area tr{page-break-inside:avoid;}
   #print-area thead{display:table-header-group;}
+  #print-area.alto table{font-size:12pt;}
+  #print-area.alto th,#print-area.alto td{padding:8px 8px;}
 }
 
 /* colori codici articolo */
@@ -569,10 +571,11 @@ function scarica(blob, nome) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
-function stampaHTML(titolo, sub, tabellaHtml, orient) {
+function stampaHTML(titolo, sub, tabellaHtml, orient, alto) {
   let st = document.getElementById('page-style'); if (!st) { st = document.createElement('style'); st.id = 'page-style'; document.head.appendChild(st); }
   st.textContent = `@page{size:A4 landscape;margin:10mm;}`;                  // tutte le stampe in orizzontale
   let pa = $('print-area'); if (!pa) { pa = document.createElement('div'); pa.id = 'print-area'; pa.className = 'printonly'; document.body.appendChild(pa); }
+  pa.classList.toggle('alto', !!alto);                              // righe più alte per le stampe che lo chiedono
   pa.innerHTML = `${titolo ? `<h2>${esc(titolo)}</h2><div class="psub">${esc(sub || '')}</div>` : ''}${tabellaHtml}`;   // senza titolo (modulo prestampato) stampa solo la tabella
   const t = document.title; document.title = titolo.replace(/[^\w\- ]+/g, '').trim() || 'Dati produttivi';
   setTimeout(() => { window.print(); setTimeout(() => { document.title = t; }, 500); }, 60);
@@ -818,12 +821,12 @@ function esportaTabella(T, nome, titolo) {
   const g = [0]; if (tot) g.push(righe.length - 1);
   scarica(xlsxSemplice([{ nome: (titolo || 'Dati').slice(0, 31), righe, grassetto: g, larghezze: T.cols.map(c => Math.max(10, Math.round((c.w || 80) / 6))) }]), nome + '.xlsx');
 }
-function stampaTabella(T, titolo, sub, orient) {
+function stampaTabella(T, titolo, sub, orient, alto) {
   const v = T.vis, tot = T.totali(v), cols = T.cols;
   const th = cols.map(c => `<th>${esc(c.l)}</th>`).join('');
   const tb = v.map(r => '<tr>' + cols.map(c => `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('') + '</tr>').join('');
   const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === 0 ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
-  stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient);
+  stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient, alto);
 }
 const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghost sm" data-x="stampa">Stampa / PDF</button><button class="btn ghost sm" data-x="xlsx">Esporta Excel</button></span>`;
 // ====== Fogli giornalieri modificabili: Lavaggi e Lavorazioni ======
@@ -1491,7 +1494,7 @@ async function pgPolpa() {
   $('polpa-oggi').onclick = () => { INTERVALLO.polpa = { da: isoOggi(), a: isoOggi() }; pgPolpa(); };
   $('polpa-da').onchange = $('polpa-a').onchange = carica;
   $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
-    if (x === 'stampa') stampaTabella(T, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape'); else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
+    if (x === 'stampa') stampaTabella(T, 'Polpa ' + PRODOTTI[S.prod], sub, 'landscape', true); else esportaTabella(T, `Polpa_${S.prod}_${i.da}_${i.a}`, 'Polpa'); };
   await carica();
 }
 
@@ -1668,7 +1671,7 @@ async function pgAS400() {
   $('as400-oggi').onclick = () => { INTERVALLO.as400 = { da: isoOggi(), a: isoOggi() }; pgAS400(); };
   $('as400-da').onchange = $('as400-a').onchange = () => { GIORNI_AS.sel = null; carica(); };
   $('as400-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.as400, sub = `lavaggi dal ${isoToIt(i.da)} al ${isoToIt(i.a)} · ${GIORNI_AS.sel.size} giornate`;
-    if (x === 'stampa') stampaTabella(T, 'Registrazione AS400 ' + PRODOTTI[S.prod], sub, 'portrait'); else esportaTabella(T, `AS400_${S.prod}_${i.da}_${i.a}`, 'AS400'); };
+    if (x === 'stampa') stampaTabella(T, 'Registrazione AS400 ' + PRODOTTI[S.prod], sub, 'landscape', true); else esportaTabella(T, `AS400_${S.prod}_${i.da}_${i.a}`, 'AS400'); };
   await carica();
 }
 
