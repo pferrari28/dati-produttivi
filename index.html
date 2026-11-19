@@ -66,15 +66,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Barlow","Segoe 
 .toolbar select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);}
 
 .sheet-wrap{background:var(--panel);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 210px);border:1px solid var(--line);}
-table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums;}
-.sheet th{background:var(--head);color:var(--muted);font-weight:600;font-size:.74rem;line-height:1.15;padding:6px 5px;border:1px solid var(--line);position:sticky;z-index:3;text-align:center;}
-.sheet thead tr.g th{top:0;font-size:.78rem;color:var(--ink);font-weight:700;letter-spacing:.03em;}
-.sheet thead tr.h th{top:27px;}
-.sheet td{border:1px solid var(--line);padding:0;height:30px;}
-.sheet td.n{background:var(--head);color:var(--muted);text-align:center;font-size:.8rem;width:38px;min-width:38px;font-weight:600;}
+table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;}
+.sheet th{background:var(--head);color:var(--muted);font-weight:600;font-size:.82rem;line-height:1.15;padding:8px 6px;border:1px solid var(--line);position:sticky;z-index:3;text-align:center;}
+.sheet thead tr.g th{top:0;font-size:.86rem;color:var(--ink);font-weight:700;letter-spacing:.03em;}
+.sheet thead tr.h th{top:31px;}
+.sheet td{border:1px solid var(--line);padding:0;height:37px;}
+.sheet td.n{background:var(--head);color:var(--muted);text-align:center;font-size:.88rem;width:42px;min-width:42px;font-weight:600;}
 .sheet td.mp{background:var(--mp);}
 .sheet td.pf{background:var(--pf);}
-.sheet input{border:0;background:transparent;width:100%;height:30px;padding:0 6px;font:inherit;font-size:.9rem;color:var(--ink);outline:none;}
+.sheet input{border:0;background:transparent;width:100%;height:37px;padding:0 7px;font:inherit;font-size:1rem;color:var(--ink);outline:none;}
 .sheet input:focus{background:#EAF2FB;box-shadow:inset 0 0 0 2px var(--link);}
 .sheet td.r input{text-align:right;}
 .sheet td.c input{text-align:center;}
@@ -182,9 +182,9 @@ table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums
 .sheet td.edited input{font-weight:700;}
 .sheet td.cur-r input{background:#FFF8DC;}
 .sheet tr.attiva td.n{background:#1F6FEB;color:#fff;}
-.sheet .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1rem;width:100%;height:30px;}
+.sheet .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1rem;width:100%;height:37px;}
 .sheet .del:hover{color:var(--danger);}
-.sheet.tab-ro td{padding:0 8px;height:28px;white-space:nowrap;}
+.sheet.tab-ro td{padding:0 9px;height:35px;white-space:nowrap;}
 .sheet.tab-ro td.r{text-align:right;}
 .sheet.tab-ro td.c{text-align:center;}
 .sheet.tab-ro td.cur{outline:2px solid #1F6FEB;outline-offset:-2px;}
@@ -228,6 +228,13 @@ table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums
   #print-area tr{page-break-inside:avoid;}
   #print-area thead{display:table-header-group;}
 }
+
+/* colori codici articolo */
+.sheet td[data-cod="MEZZANO"],.sheet td[data-cod="GRAN BON"]{background-color:#FFF0A0!important;}
+.sheet td[data-cod="BIO"],.sheet td[data-cod="RETINATO"]{background-color:#C6EBC0!important;}
+.sheet td[data-cod="SBIANCATO"]{background-color:#FFD08A!important;}
+.sheet td[data-cod]{font-weight:600;}
+@media print{.sheet td[data-cod]{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -650,7 +657,8 @@ function Tabella(cont, opt) {
         const neg = (c.t === 'kg' && r[c.k] < 0) ? ' style="color:var(--danger)"' : '';
         const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
         const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
-        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}>${esc(x)}</td>`;
+        const cod = COLORI_COD.includes(String(x).trim().toUpperCase()) ? ` data-cod="${esc(String(x).trim().toUpperCase())}"` : '';
+        return `<td class="${al}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}>${esc(x)}</td>`;
       }).join('') + '</tr>';
     }).join('');
     const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
@@ -984,10 +992,17 @@ function aggiornaRiga(i) {                              // ricalcola celle calco
   aggiornaPiede();
 }
 // i calcoli di tutte le righe dipendono da media lotti: ridisegna tutto dopo caricamenti
-function aggiornaTutteRighe() { CUR.righe.forEach((_, i) => aggiornaRiga(i)); }
+function aggiornaTutteRighe() { CUR.righe.forEach((_, i) => aggiornaRiga(i)); tintaCodici(); }
+// colori dei codici articolo (giallo/verde/arancione) anche nelle celle modificabili
+const COLORI_COD = ['MEZZANO', 'BIO', 'GRAN BON', 'RETINATO', 'SBIANCATO'];
+function tintaCodici() {
+  document.querySelectorAll('#foglio-t td[data-f="cod"]').forEach(td => { const inp = td.querySelector('input'), v = inp ? inp.value.trim().toUpperCase() : ''; if (COLORI_COD.includes(v)) td.dataset.cod = v; else delete td.dataset.cod; });
+}
+['input', 'change', 'focusout'].forEach(ev => document.addEventListener(ev, e => { if (e.target.closest && e.target.closest('td[data-f="cod"]')) setTimeout(tintaCodici, 0); }));
 
 function segnaModifica() { CUR.dirty = true; aggiornaStato(); }
 function aggiornaStato() {
+  setTimeout(tintaCodici, 0);
   const s = $('g-stato'); if (!s) return;
   if (CUR.dirty) { s.className = 'stato mod'; s.textContent = 'Modifiche non salvate'; }
   else if (CUR.esiste) { s.className = 'stato ok'; s.textContent = 'Salvata'; }
