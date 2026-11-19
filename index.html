@@ -941,7 +941,7 @@ function controlli(tipo, i) {
 }
 
 // ---- disegno del foglio ----
-const RIGHE_MIN = 8;
+const RIGHE_MIN = 30;
 function inpAttr(c) { return `data-t="${c.t}" ${c.t === 'int' || c.t === 'kg' || c.t === 'ov' || c.t === 'kgf' || c.t === 'anno' || c.t === 'mese' ? 'inputmode="decimal"' : ''} autocomplete="off" spellcheck="false"`; }
 function celleRiga(tipo, i, cols) {
   const r = CUR.righe[i], cc = calcRiga(tipo, r, CUR.data), ctl = controlli(tipo, i);
@@ -1355,7 +1355,7 @@ async function pgGiorno(tipo) {
   FG = {};
   const main = $('main'), vista = V[tipo];
   main.innerHTML = `<div class="page-title"><h2>${TIPI[tipo].nome} · ${PRODOTTI[S.prod]}</h2></div>
-    <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button></div>
+    <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button><button data-v="periodo" class="${vista === 'periodo' ? 'on' : ''}">Ricerca tra date</button></div>
     <div id="corpo"></div>`;
   main.querySelector('.subtabs').onclick = async e => { const v = e.target.dataset.v; if (!v || v === vista) return; if (CUR.dirty && vista === 'giorno') { const r = await chiediSalvataggio(); if (r === 'annulla') return; } V[tipo] = v; pgGiorno(tipo); };
   if (vista === 'giorno') {
@@ -1394,6 +1394,8 @@ async function pgGiorno(tipo) {
     $('g-xlsx').onclick = () => CUR.data && esportaTabella(T(), `${TIPI[tipo].nome}_${S.prod}_${CUR.data}`, TIPI[tipo].nome);
     if (DATA_SEL[tipo]) await apriGiorno(tipo, DATA_SEL[tipo]);
     else { CUR.tipo = tipo; CUR.data = null; CUR.righe = []; $('foglio').innerHTML = '<div class="empty">Scrivi la data (per esempio 181126 oppure 18/11/2026) e premi Invio.</div>'; $('g-data-txt').focus(); }
+  } else if (vista === 'periodo') {
+    await pgPeriodo(tipo);
   } else {
     $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
     const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
@@ -1403,6 +1405,27 @@ async function pgGiorno(tipo) {
   }
 }
 window.addEventListener('beforeunload', e => { if (CUR.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ---- ricerca tra due date (es. dal 10/10/2026 al 10/11/2026) ----
+async function pgPeriodo(tipo) {
+  const id = 'per_' + tipo, box = $('corpo');
+  box.innerHTML = barraIntervallo(id, VUOTO_INT) + '<div id="per-corpo"></div>';
+  let T = null;
+  const carica = async () => {
+    if (!leggiIntervallo(id)) { $('per-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 101026 e 101126) oppure scegli «Mese corrente».</div>'; T = null; return; }
+    const i = INTERVALLO[id], mappa = await mesiIntervallo(TIPI[tipo].tab, i.da, i.a);
+    if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
+    const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
+    T = Tabella($('per-corpo'), { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, sepMese: 'giorno' });
+  };
+  $(id + '-mese').onclick = () => { INTERVALLO[id] = meseCorrenteInt(); pgPeriodo(tipo); };
+  $(id + '-azz').onclick = () => { INTERVALLO[id] = { da: '', a: '' }; pgPeriodo(tipo); };
+  $(id + '-oggi').onclick = () => { INTERVALLO[id] = { da: isoOggi(), a: isoOggi() }; pgPeriodo(tipo); };
+  $(id + '-da').onchange = $(id + '-a').onchange = carica;
+  $(id + '-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO[id], sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
+    if (x === 'stampa') stampaTabella(T, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, sub, 'landscape'); else esportaTabella(T, `${TIPI[tipo].nome}_${S.prod}_${i.da}_${i.a}`, TIPI[tipo].nome); };
+  await carica();
+}
 // ====== Pagine di consultazione: Polpa, Prelievo magazzino, Totale lavaggi · Codici, Parametri, Backup ======
 const input = (id, v, extra) => `<input id="${id}" value="${esc(v ?? '')}" ${extra || ''}>`;
 async function mesiIntervallo(tab, da, a) {                       // carica tutti i mesi tra due date e unisce le giornate
