@@ -1782,7 +1782,7 @@ async function pgConsorzio() {
       elenco = (await trovaRighe(S.prod, Math.min(lo, hi), Math.max(lo, hi))).map(x => ({ data: x.data, r: x.riga }));
     }
     const lotti = [...new Set(elenco.map(x => x.r.lotto))]; await caricaInfo(S.prod, lotti); righe = [];
-    elenco.forEach(({ data: d, r }) => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab, ab: c.ab }); });
+    elenco.forEach(({ data: d, r }) => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.sfridi, ab: c.ab }); });
     CONS.note = {}; righe.forEach((r, i) => { if (num(r.ab)) CONS.note[i] = fmtKg(r.ab); });      // Note: di partenza la voce Polpa + piatti della lavorazione (modificabile)
     CONS.pag = 0; disegna();
   };
