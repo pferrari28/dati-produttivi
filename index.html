@@ -332,7 +332,7 @@ const vuoto = v => v == null || v === '' || v === false;
 const num = v => (v == null || v === '' || isNaN(v)) ? 0 : Number(v);
 const mround = x => Math.round(x * 2 + 1e-9) / 2;                       // MROUND(x; 0,5) di Excel
 const r2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
-const normMatr = m => String(m ?? '').trim().toUpperCase().replace(/\s+/g, ' ');
+const normMatr = m => String(m ?? '').trim().toUpperCase().replace(/\s+/g, '');      // PD 707 e PD707 sono la stessa matricola
 const confrontaTxt = (a, b) => String(a).localeCompare(String(b), 'it', { numeric: true, sensitivity: 'base' });
 
 // numero: accetta 1.234,5  1234,5  1234.5  e somme (=12+24 oppure 12+24)
@@ -533,7 +533,8 @@ const infoLotto = (prod, l) => INFO[prod].get(l) || null;
 const par = () => PAR[S.prod];
 const SENZA_MATR = ['BON', 'GRAN BON', 'RETINATO', 'SBIANCATO'];       // per questi codici matricola e mese/anno non sono obbligatori
 const senzaMatr = (prod, r) => SENZA_MATR.includes(String(codiceDi(prod, r)).toUpperCase());
-const codiceDi = (prod, r) => r.cod ? r.cod : (CODICI[prod][normMatr(r.matr)] || '');
+const codiceMatr = (prod, matr) => { const m = normMatr(matr), t = CODICI[prod]; if (t[m] !== undefined) return t[m]; const k = Object.keys(t).find(x => normMatr(x) === m); return k !== undefined ? t[k] : ''; };
+const codiceDi = (prod, r) => r.cod ? r.cod : codiceMatr(prod, r.matr);
 function stagionatura(dataIso, mese, anno) {
   if (!dataIso || !mese || !anno) return null;
   const d = new Date(+dataIso.slice(0, 4), +dataIso.slice(5, 7) - 1, +dataIso.slice(8, 10)); const ieri = new Date(d.getTime() - 86400000);
@@ -1148,7 +1149,7 @@ function commitCella(inp) {
   if (n.err) { toast(n.err, true); inp.value = mostra(c.t, r[k]); return; }
   r.fx = r.fx || {};
   if (c.t === 'cod') {
-    const def = CODICI[S.prod][normMatr(r.matr)] || ''; if (n.v && n.v !== def) r.cod = n.v; else delete r.cod;
+    const def = codiceMatr(S.prod, r.matr); if (n.v && n.v !== def) r.cod = n.v; else delete r.cod;
     inp.value = calcRiga(tipo, r, CUR.data).codice;
   } else if (c.t === 'kgf') {
     if (n.v === '' || n.v === calcLavorazione(S.prod, CUR.data, { ...r, kgf: '' }).kgf) delete r.kgf; else r.kgf = n.v;
@@ -1185,6 +1186,17 @@ function eventiFoglio(box) {
     inp.dataset.orig = inp.value;
     setTimeout(() => inp.select(), 0);
     chiudiSelezioneFoglio();
+  });
+  box.addEventListener('input', e => {                               // completamento automatico in stile Excel: propone il valore già scritto che inizia con le lettere digitate
+    const inp = e.target; if (inp.tagName !== 'INPUT' || /^deleteContent/.test(e.inputType || '')) return;
+    const td = inp.closest('td'); if (!td) return; const k = td.dataset.f, c = colsGiorno(CUR.tipo).find(x => x.k === k);
+    if (!c || !['cod', 'matr', 'fmt', 'linea', 'lotto'].includes(c.t)) return;
+    const v = inp.value; if (!v || inp.selectionStart !== v.length) return;
+    const cand = new Set(); CUR.righe.forEach(r => { const x = c.t === 'cod' ? calcRiga(CUR.tipo, r, CUR.data).codice : r[k]; if (x) cand.add(String(x)); });
+    if (c.t === 'cod') Object.values(CODICI[S.prod]).forEach(x => x && cand.add(String(x)));
+    if (c.t === 'matr') Object.keys(CODICI[S.prod]).forEach(x => cand.add(normMatr(x)));
+    const q = v.toUpperCase().replace(/\s+/g, ''), tr = [...cand].find(x => x.toUpperCase().startsWith(q) && x.length > q.length);
+    if (tr) { inp.value = v + tr.slice(q.length); inp.setSelectionRange(v.length, inp.value.length); }
   });
   box.addEventListener('focusout', e => { if (e.target.tagName === 'INPUT') { FOCUS_NEXT = e.relatedTarget; commitCella(e.target); FOCUS_NEXT = null; } });
   box.addEventListener('keydown', e => {
@@ -2040,7 +2052,7 @@ async function caricaBase() {
   const [imp, cod] = await Promise.all([DB.tutteImp(), DB.tuttiCodici()]);
   Object.assign(IMP, imp);
   ['PR', 'GP'].forEach(p => { PAR[p] = { ...PARAM_DEF[p], ...(imp['param_' + p] || {}) }; CODICI[p] = {}; });
-  cod.forEach(c => { CODICI[c.prodotto][c.matricola] = c.codice; });
+  cod.forEach(c => { CODICI[c.prodotto][normMatr(c.matricola)] = c.codice; });
 }
 async function avviaApp() {
   $('login').hidden = true; $('app').hidden = false;
