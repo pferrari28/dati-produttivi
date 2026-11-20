@@ -827,6 +827,7 @@ function Tabella(cont, opt) {
         vv.map(v => `<label class="fp-v"><input type="checkbox" data-v="${esc(v)}" ${scelti.has(v) ? 'checked' : ''}> ${esc(v)}<i>${conta.get(v)}</i></label>`).join('');
     };
     disegnaLista(); cerca.focus();
+    cerca.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pop.querySelector('[data-o="ok"]').click(); } });   // Invio conferma la ricerca e applica il filtro
     cerca.addEventListener('input', () => {                           // come Excel: la ricerca seleziona solo i valori trovati
       const q = cerca.value.trim().toLowerCase(); scelti.clear(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => scelti.add(v)); disegnaLista();
     });
@@ -1102,6 +1103,7 @@ function apriFiltroGiorno(th) {
       vv.map(v => `<label class="fp-v"><input type="checkbox" data-v="${esc(v)}" ${scelti.has(v) ? 'checked' : ''}> ${esc(v)}<i>${conta.get(v)}</i></label>`).join('');
   };
   disegnaLista(); cerca.focus();
+    cerca.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pop.querySelector('[data-o="ok"]').click(); } });   // Invio conferma la ricerca e applica il filtro
   cerca.addEventListener('input', () => { const q = cerca.value.trim().toLowerCase(); scelti.clear(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => scelti.add(v)); disegnaLista(); });
   lista.addEventListener('change', e => {
     const i = e.target; if (i.dataset.t) { const q = cerca.value.trim().toLowerCase(); valori.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => i.checked ? scelti.add(v) : scelti.delete(v)); }
