@@ -289,6 +289,8 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 /* Lavorazioni giornata: Forme in grassetto, Stagionatura normale */
 .sheet td.formeb input{font-weight:700;}
 .sheet td.calc[data-k=stag]{font-weight:400;}
+
+#print-area td,#print-area th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -893,8 +895,8 @@ function esportaTabella(T, nome, titolo) {
 }
 function stampaTabella(T, titolo, sub, orient, alto, centra, cls) {
   const v = T.vis, tot = T.totali(v), cols = T.cols;
-  const th = cols.map(c => `<th${c.pw ? ` style="width:${c.pw};min-width:${c.pw};${c.pwMax ? `max-width:${c.pw};` : ''}"` : ''}>${esc(c.l)}</th>`).join('');   // pw: larghezza di stampa
-  const tb = v.map(r => '<tr>' + cols.map(c => { const gc = (c.k === 'codice' || c.k === 'cod') ? gruppoCod(r[c.k]) : ''; return `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}"${gc ? ` data-cod="${gc}"` : ''}>${esc(valTxt(c, r[c.k]))}</td>`; }).join('') + '</tr>').join('');
+  const th = cols.map(c => `<th${c.pw || c.bg ? ` style="${c.pw ? `width:${c.pw};min-width:${c.pw};${c.pwMax ? `max-width:${c.pw};` : ''}` : ''}${c.bg ? `background:${c.bg} !important;` : ''}"` : ''}>${esc(c.l)}</th>`).join('');   // pw: larghezza di stampa
+  const tb = v.map(r => '<tr>' + cols.map(c => { const gc = (c.k === 'codice' || c.k === 'cod') ? gruppoCod(r[c.k]) : ''; return `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}"${gc ? ` data-cod="${gc}"` : ''}${c.bg ? ` style="background:${c.bg} !important;font-weight:700;"` : ''}>${esc(valTxt(c, r[c.kv || c.k]))}</td>`; }).join('') + '</tr>').join('');
   const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === (T.etNear ? Math.max(0, cols.findIndex(x => x.tot) - 1) : 0) ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
   stampaHTML(titolo, sub, `<div class="${cls || ''}"><table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table></div>`, orient, alto, centra);
 }
@@ -1646,7 +1648,10 @@ async function pgPolpa() {
   $('polpa-da').onchange = $('polpa-a').onchange = carica;
   $('polpa-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.polpa, sub = `dal ${isoToIt(i.da)} al ${isoToIt(i.a)}`;
     if (x === 'stampa') {
-      let TS = { ...T, cols: T.cols.map(c => c.k === 'forme' ? { ...c, tot: 0 } : c), etNear: true };      // totale solo sui kg, con la scritta TOTALE nella cella accanto
+      const colRiga = gp ? '#E2EFDA' : '#FFFF00';                   // colore delle celle con il numero riga: giallo reggiano, verde padano
+      const colsP = T.cols.map(c => c.k === 'forme' ? { ...c, tot: 0 } : c.k === 'n' ? { ...c, bg: colRiga } : c.k === 'polpa' ? { ...c, pw: '82mm' } : c);
+      colsP.push({ k: 'n2', kv: 'n', l: 'Num. riga', al: 'c', pw: '15mm', pwMax: 1, bg: colRiga });      // numero riga anche in fondo
+      let TS = { ...T, cols: colsP, etNear: true };      // totale solo sui kg, con la scritta TOTALE nella cella accanto
       if (gp) {                                   // Grana Padano: in stampa una sola colonna con polpa + 18% dei piatti (taglio liscio), senza distinguerli
         const cols = TS.cols.filter(c => c.k !== 'q' && c.k !== 'ab'), vis = T.vis.map(r => ({ ...r, polpa: r.polpa == null && !num(r.q) ? null : r.ab }));
         TS = { ...TS, cols, vis, totali: v => { const o = {}; cols.forEach(c => { if (c.tot) o[c.k] = v.reduce((s, r) => s + num(r[c.k]), 0); }); return o; } };
