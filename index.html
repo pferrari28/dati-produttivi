@@ -287,7 +287,7 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #print-area .sp-as400 th{font-size:13pt;}
 
 /* Lavorazioni giornata: Forme in grassetto, Stagionatura normale */
-.sheet td.fb input{font-weight:700;}
+.sheet td.formeb input{font-weight:700;}
 .sheet td.calc[data-k=stag]{font-weight:400;}
 </style></head>
 <body>
@@ -1046,7 +1046,7 @@ function celleRiga(tipo, i, cols) {
       const manuale = (c.t === 'kgf' && !vuoto(r.kgf)) || (c.t === 'ov' && !vuoto(r[k])) ? ' edited' : '';
       const num_ = (c.t === 'int' || c.t === 'kg' || c.t === 'ov' || c.t === 'kgf') ? ` data-v="${v ?? ''}"` : '';
       const txt = (r.fx && r.fx[k]) ? '' : mostra(c.t, v);
-      h += `<td data-i="${i}" data-c="${ci}" data-f="${k}" class="${cls}${manuale}${k === 'forme' && tipo === 'lavorazioni' ? ' fb' : ''}${c.t === 'kg' || c.t === 'int' || c.t === 'ov' || c.t === 'kgf' ? ' r' : c.t === 'mese' || c.t === 'anno' ? ' c' : ''}"${tip}${num_}><input ${inpAttr(c)} value="${esc(txt || mostra(c.t, v))}"></td>`;
+      h += `<td data-i="${i}" data-c="${ci}" data-f="${k}" class="${cls}${manuale}${k === 'forme' && tipo === 'lavorazioni' ? ' formeb' : ''}${c.t === 'kg' || c.t === 'int' || c.t === 'ov' || c.t === 'kgf' ? ' r' : c.t === 'mese' || c.t === 'anno' ? ' c' : ''}"${tip}${num_}><input ${inpAttr(c)} value="${esc(txt || mostra(c.t, v))}"></td>`;
     } else if (c.t === 'cod') {
       const v = cc.codice, manuale = r.cod ? ' edited' : '';
       h += `<td data-i="${i}" data-c="${ci}" data-f="cod" class="${cls}${manuale}"${tip}><input ${inpAttr(c)} value="${esc(v)}"></td>`;
