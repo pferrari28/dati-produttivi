@@ -1274,6 +1274,7 @@ function eventiFoglio(box) {
     else if (k === 'Enter') { e.preventDefault(); muovi(1, 0); }
     else if (k === 'ArrowRight' && (inp.selectionStart === inp.value.length || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, 1); }
     else if (k === 'ArrowLeft' && (inp.selectionEnd === 0 || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, -1); }
+    else if (k === 'Home') { e.preventDefault(); const primo = [...td.parentElement.querySelectorAll('td')].map(t => t.querySelector('input')).find(x => x); if (primo && primo !== inp) primo.focus(); }   // Home: torna alla prima cella della riga
     else if (k === 'Escape') { const r = CUR.righe[i], kk = td.dataset.f; inp.value = mostra(td.dataset.t || '', r[kk]); inp.blur(); }
   });
   box.addEventListener('click', e => {
