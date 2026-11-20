@@ -940,8 +940,12 @@ function controlli(tipo, i) {
   const comb = x => normMatr(x.matr) + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
   if (r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
     E('matr', 'Lo stesso lotto ha matricola o mese/anno diversi in un\'altra riga');
-  if (reg && !vuoto(r.matr) && !vuoto(r.mese) && comb(r) !== normMatr(reg.matr) + '|' + (reg.mese ?? '') + '|' + (reg.anno ?? ''))
-    W('matr', `Diverso dal Registro lotti (${reg.matr} ${reg.mese}/${reg.anno})`);
+  if (reg) {                                         // lotto già nel Registro lotti: se matricola o produzione sono diverse, celle in rosso
+    const msg = `Diverso dal Registro lotti (${reg.matr} ${reg.mese ?? '?'}/${reg.anno ?? '?'})`;
+    if (!vuoto(r.matr) && reg.matr && normMatr(r.matr) !== normMatr(reg.matr)) E('matr', msg);
+    if (!vuoto(r.mese) && reg.mese != null && +r.mese !== +reg.mese) E('mese', msg);
+    if (!vuoto(r.anno) && reg.anno != null && +r.anno !== +reg.anno) E('anno', msg);
+  }
   if (reg && reg.prodotto && S.prod === 'GP' && /parmig/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Parmigiano Reggiano');
   if (reg && reg.prodotto && S.prod === 'PR' && /grana/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Grana Padano');
   if (vuoto(r.forme) || num(r.forme) <= 0) E('forme', 'Numero forme mancante');
@@ -1113,12 +1117,12 @@ async function compilaDaLotto(i, l) {
   if (CUR.tipo !== tipo || CUR.data !== data) return;
   const r = CUR.righe[i]; if (!r || r.lotto !== l) { aggiornaTutteRighe(); return; }
   const reg = REG.get(l), inf = tipo === 'lavorazioni' ? infoLotto(S.prod, l) : null;
-  const d = inf && inf.matr ? { matr: inf.matr, mese: inf.mese, anno: inf.anno, da: 'lavaggi' } : reg ? { matr: reg.matr, mese: reg.mese, anno: reg.anno, da: 'registro' } : null;
+  const d = inf && inf.matr ? { matr: inf.matr, mese: inf.mese, anno: inf.anno, da: 'lavaggi' } : null;      // compilazione automatica solo nelle lavorazioni e solo dai lavaggi; dal Registro lotti non si compila più (solo controllo)
   if (d) {
     let cambiati = 0;
     ['matr', 'mese', 'anno'].forEach(f => { if (!vuoto(d[f]) && r[f] !== d[f]) { r[f] = d[f]; cambiati++; } });
-    if (cambiati) { segnaModifica(); toast(`${l}: matricola ${d.matr}, ${String(d.mese).padStart(2, '0')}/${d.anno} dal ${d.da === 'registro' ? 'Registro lotti' : 'lavaggi'}`); }
-  } else toast(`${l}: non trovato nel Registro lotti${tipo === 'lavorazioni' ? ' e nei lavaggi' : ''}: scrivi matricola e mese/anno a mano`, true);
+    if (cambiati) { segnaModifica(); toast(`${l}: matricola ${d.matr}, ${String(d.mese).padStart(2, '0')}/${d.anno} dai lavaggi`); }
+  } else if (tipo === 'lavorazioni') toast(`${l}: non trovato nei lavaggi: scrivi matricola e mese/anno a mano`, true);
   disegnaFoglioMantieniFocus(i);
 }
 function disegnaFoglioMantieniFocus(i) {
