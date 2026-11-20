@@ -711,20 +711,37 @@ function Tabella(cont, opt) {
       <div class="legend" style="margin-top:8px"><span style="margin-right:12px">${v.length}${v.length !== T.rows.length ? ' di ' + T.rows.length : ''} righe</span><span style="color:var(--muted)">Clic sul titolo: ordina / filtra · trascina o usa le frecce (con Maiusc) per selezionare e vedere la somma</span></div>`;
     T.tab = cont.querySelector('table');
     T.tab.addEventListener('mousedown', onDown); T.tab.addEventListener('keydown', onKey);
-    if (opt.editable && opt.onEdit) T.tab.addEventListener('dblclick', e => { const td = e.target.closest('td[data-ed]'); if (td && !td.querySelector('input')) apriModificaCella(td); });
+    if (opt.editable && opt.onEdit) T.tab.addEventListener('mousedown', e => {        // un clic su una cella modificabile la apre (dopo che il fuoco è passato dall'eventuale cella precedente)
+      const td = e.target.closest('td[data-ed]'); if (!td || td.querySelector('input')) return;
+      const ri = +td.dataset.r, ci = +td.dataset.c; setTimeout(() => { const t = cellaEdAt(ri, ci); if (t && !t.querySelector('input')) apriModificaCella(t); }, 0);
+    });
     T.tab.querySelectorAll('thead th').forEach(h => h.addEventListener('click', e => { e.stopPropagation(); apriFiltro(h); }));
     T.tab.querySelectorAll('td[data-tip]').forEach(td => { td.addEventListener('mouseenter', e => mostraTip(e.target.dataset.tip, e, true)); td.addEventListener('mouseleave', nascondiTip); });
     T.sel = null; nascondiSomma(); fire();
+    if (T._pend) { const p = T._pend; T._pend = null; const t = cellaEdAt(p.r, p.c); if (t) apriModificaCella(t); }   // passa alla cella indicata dalla tastiera
   };
   T.aggiorna = (rows) => { T.rows = rows; T.disegna(); };
-  function apriModificaCella(td) {                  // doppio clic: campo di scrittura nella cella; Invio conferma, Esc annulla
-    const row = T.vis[+td.dataset.r], c = cols[+td.dataset.c]; if (!row || !c) return;
+  const cellaEdAt = (ri, ci) => T.tab && T.tab.querySelector(`td[data-ed][data-r="${ri}"][data-c="${ci}"]`);
+  const colsEd = () => cols.map((c, i) => (opt.editable || []).includes(c.k) ? i : -1).filter(i => i >= 0);
+  const nextEdCol = (ci, dir) => dir > 0 ? colsEd().find(x => x > ci) : [...colsEd()].reverse().find(x => x < ci);
+  function apriModificaCella(td) {                  // scrittura nella cella: Invio/freccia giù = riga sotto, Tab/freccia destra = cella a destra, Esc annulla
+    const ri = +td.dataset.r, ci = +td.dataset.c, row = T.vis[ri], c = cols[ci]; if (!row || !c) return;
     const inp = document.createElement('input'); inp.value = row[c.k] == null ? '' : row[c.k];
     inp.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;padding:2px 4px;border:1px solid var(--link);background:#fff;';
     td.innerHTML = ''; td.appendChild(inp); inp.focus(); inp.select();
     let chiuso = false;
-    const fine = ok => { if (chiuso) return; chiuso = true; if (ok) opt.onEdit(row, c.k, inp.value); else T.disegna(); };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fine(true); } else if (e.key === 'Escape') { e.preventDefault(); fine(false); } });
+    const fine = (ok, dest) => { if (chiuso) return; chiuso = true; if (ok) { T._pend = dest || null; opt.onEdit(row, c.k, inp.value); } else { T._pend = null; T.disegna(); } };
+    inp.addEventListener('mousedown', e => e.stopPropagation());
+    inp.addEventListener('keydown', e => {
+      e.stopPropagation();
+      const k = e.key, sx = inp.selectionStart;
+      if (k === 'Enter' || k === 'ArrowDown') { e.preventDefault(); fine(true, { r: ri + 1, c: ci }); }
+      else if (k === 'ArrowUp') { e.preventDefault(); fine(true, { r: ri - 1, c: ci }); }
+      else if (k === 'Tab') { e.preventDefault(); const n = nextEdCol(ci, e.shiftKey ? -1 : 1); fine(true, n == null ? null : { r: ri, c: n }); }
+      else if (k === 'ArrowRight' && sx === inp.value.length) { e.preventDefault(); const n = nextEdCol(ci, 1); fine(true, n == null ? null : { r: ri, c: n }); }
+      else if (k === 'ArrowLeft' && sx === 0 && inp.selectionEnd === 0) { e.preventDefault(); const n = nextEdCol(ci, -1); fine(true, n == null ? null : { r: ri, c: n }); }
+      else if (k === 'Escape') { e.preventDefault(); fine(false); }
+    });
     inp.addEventListener('blur', () => fine(true));
   }
 
