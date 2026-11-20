@@ -832,15 +832,8 @@ function righeExport(T, intest) {
   if (cols.some(c => c.tot)) righe.push(cols.map((c, i) => i === 0 ? 'TOTALE' : c.tot ? tot[c.k] : ''));
   return righe;
 }
-function unisciMeseAnno(T) {                          // lavaggi: mese e anno in un'unica colonna, es. 10/25
-  const i = T.cols.findIndex(c => c.k === 'mese'), j = T.cols.findIndex(c => c.k === 'anno');
-  if (i < 0 || j < 0) return T;
-  const cols = T.cols.filter((c, k) => k !== j).map((c, k) => k === i ? { ...c, k: 'ma', l: 'Mese/anno', t: 'txt', w: 80, al: 'c' } : c);
-  const vis = T.vis.map(r => ({ ...r, ma: r.mese && r.anno ? String(r.mese).padStart(2, '0') + '/' + String(r.anno).slice(-2) : '' }));
-  return { ...T, cols, vis };
-}
 function esportaTabella(T, nome, titolo) {
-  if (titolo === 'Lavaggi') T = unisciMeseAnno(T);
+  if (titolo === 'Lavaggi') return xlLavaggi(T, nome);
   if (typeof EXPORT_FMT !== 'undefined' && EXPORT_FMT[titolo] && EXPORT_FMT[titolo](T, nome)) return;
   const righe = righeExport(T), tot = T.cols.some(c => c.tot);
   const g = [0]; if (tot) g.push(righe.length - 1);
@@ -2022,6 +2015,21 @@ function xlSchedeConsorzio(righe, note, nome) {
     fogli.push({ nome: n > 1 ? `Scheda ${p + 1}` : 'NUOVA SCHEDA CONSORZIO', righe: rr, cols: w.map(x => ({ w: x })), rowH, merges: ['A10:A11', 'B10:B11', 'C10:D10', 'E10:E11', 'F10:F11', 'G10:G11', 'H10:H11', 'L10:L11', 'C27:D27', 'I27:J27'], margins: [0.315, 0.315, 0.748, 0.748] });
   }
   scarica(xlsxFormato(fogli), nome + '.xlsx');
+}
+
+// ---- LAVAGGI: colonne essenziali per il vecchio prospetto (data, matricola, mese/anno, lotto, forme, pallet sporco) ----
+const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+function xlLavaggi(T, nome) {
+  const spec = [
+    { l: 'Data', w: 12, f: 'dd/mm/yyyy', al: 'center', v: r => r.data ? serData(r.data) : '' },
+    { l: 'Matricola', w: 12, al: 'center', v: r => numOrTxt(r.matr) },
+    { l: 'Mese/anno', w: 12, al: 'center', v: r => (+r.mese >= 1 && +r.mese <= 12 && r.anno) ? MESI_BREVI[+r.mese - 1] + '-' + String(r.anno).slice(-2) : '' },
+    { l: 'Lotto', w: 12, al: 'center', v: r => r.lotto || '' },
+    { l: 'Forme', w: 10, al: 'center', f: 1, v: r => nv(r.forme) },
+    { l: 'Pallet sporco', w: 14, al: 'center', f: FMT_X.kg2, v: r => nv(r.sporco) },
+  ];
+  const f = { nome: 'Lavaggi', righe: [spec.map(c => ({ v: c.l, s: { b: 1, al: 'center', bd: true, fill: 'FFFF00' } })), ...T.vis.map(r => spec.map(c => ({ v: c.v(r), s: { f: c.f, al: c.al, bd: true } })))], cols: spec.map(c => ({ w: c.w })), freeze: 1 };
+  scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
 }
 // ====== Guscio: menu, selettore prodotto, login, avvio ======
 const MENU = () => {
