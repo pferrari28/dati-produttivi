@@ -1359,6 +1359,25 @@ async function conflittiLotti() {
   });
   return out;
 }
+// ---- avviso (senza bloccare) per il peso medio dei lavaggi fuori dal range ----
+function mediaFuoriRange(righe, data) {
+  const p = par(), out = [];
+  righe.forEach(r => {
+    if (!r || rigaVuota(r) || vuoto(r.sporco) || num(r.sporco) <= 0) return;
+    const c = calcRiga('lavaggi', r, data);
+    if (c.medio != null && (c.medio < p.peso_min || c.medio > p.peso_max)) out.push({ data, lotto: r.lotto, matr: r.matr, medio: c.medio, sopra: c.medio > p.peso_max });
+  });
+  return out;
+}
+function avvisoMedie(lista) {
+  if (!lista.length) return;
+  const p = par();
+  apriModal(`<h2>Peso medio fuori range</h2><p>I dati sono stati salvati. Queste righe hanno un peso medio fuori dal range previsto (${p.peso_min}–${p.peso_max} kg):</p>
+    <ul class="errlist">${lista.map(x => `<li><b>${esc(x.lotto || 'senza lotto')}</b> · ${esc(x.matr || '')} · ${isoToIt(x.data)}: ${fmtKg(x.medio)} kg (${x.sopra ? 'sopra' : 'sotto'})</li>`).join('')}</ul>
+    <div class="modal-btns"><button class="btn amber" id="mm-ok">Ho capito</button></div>`);
+  $('mm-ok').onclick = chiudiModal;
+}
+
 async function salvaGiornata() {
   const tipo = CUR.tipo, data = CUR.data; if (!tipo || !data) return false;
   const righe = CUR.righe.filter(r => !rigaVuota(r));
@@ -1384,7 +1403,9 @@ async function salvaGiornata() {
     if (tipo === 'lavaggi') INFO[S.prod].clear();                                 // le medie dei lotti possono essere cambiate
     let e = 0, w = 0; CUR.righe.forEach((_, i) => Object.values(controlli(tipo, i)).forEach(m => m.lv === 'e' ? e++ : m.lv === 'w' ? w++ : 0));
     toast(`Giornata del ${isoToIt(data)} salvata${e || w ? ` · ${e} errori, ${w} avvisi` : ''}`);
-    disegnaFoglio(); aggiornaStato(); return true;
+    disegnaFoglio(); aggiornaStato();
+    if (tipo === 'lavaggi') avvisoMedie(mediaFuoriRange(CUR.righe, data));
+    return true;
   } catch (e) { toast('Salvataggio non riuscito: ' + (e.message || e), true); return false; }
 }
 
@@ -1441,9 +1462,11 @@ async function salvaElenco() {
       const pulite = g.dati.filter(r => !rigaVuota(r)).map(r => { const o = { ...r }; Object.keys(o).forEach(k => { if (o[k] === '' || o[k] == null) delete o[k]; }); return o; });
       await DB.salva(TIPI[tipo].tab, S.prod, d, pulite, tipo === 'lavaggi' ? num(g.altre) : 0);
     }
+    const avvisi = tipo === 'lavaggi' ? giorni.flatMap(d => mediaFuoriRange(ELENCO.mappa.get(d).dati, d)) : [];
     ELENCO.mod.clear(); if (tipo === 'lavaggi') INFO[S.prod].clear();
     toast(`Modifiche salvate (${giorni.length} ${giorni.length === 1 ? 'giornata' : 'giornate'})`);
     pgElenco(tipo, true);
+    avvisoMedie(avvisi);
   } catch (e) { toast('Salvataggio non riuscito: ' + (e.message || e), true); }
 }
 
