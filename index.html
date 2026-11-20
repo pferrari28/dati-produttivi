@@ -1077,6 +1077,7 @@ function applicaFiltriGiorno() {
     tr.style.display = ok ? '' : 'none';
   });
   document.querySelectorAll('#foglio-t th.fg').forEach(th => { const c = cols[+th.dataset.c], on = !!FG[c.k]; th.classList.toggle('on', on); th.querySelector('.ar').textContent = on ? ' ⏷' : ''; });
+  const cb = $('g-canc'); if (cb) cb.style.display = Object.values(FG).some(Boolean) ? '' : 'none';      // tasto fuori dalla tabella per togliere i filtri
 }
 function apriFiltroGiorno(th) {
   chiudiFiltroPop();
@@ -1488,8 +1489,9 @@ async function pgElenco(tipo, mantieni) {
   ELENCO.tipo = tipo; ELENCO.mk = mk; ELENCO.mappa = new Map([...mappa].map(([d, g]) => [d, { ...g, dati: g.dati.map(r => ({ ...r })) }]));   // copia di lavoro: le modifiche non toccano la cache finché non si salva
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, ELENCO.mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['forme'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
+  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['forme'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
   aggiornaBarraElenco();
+  $('el-canc').onclick = () => { Object.keys(TAB_ELENCO.filtri).forEach(k => delete TAB_ELENCO.filtri[k]); TAB_ELENCO.disegna(); };
   $('el-salva-b').onclick = salvaElenco;
   $('el-annulla-b').onclick = () => { ELENCO.mod.clear(); pgElenco(tipo, true); };
   const wrap = box.querySelector('.sheet-wrap');
@@ -1518,6 +1520,7 @@ async function pgGiorno(tipo) {
         <span id="g-dow" class="note" style="min-width:28px"></span>
         <button class="btn ghost sm" id="g-azz" title="Svuota la data">Azzera data</button>
         <span id="g-stato" class="stato new">Nuova</span>
+        <button class="btn ghost sm" id="g-canc" style="display:none" title="Togli tutti i filtri della giornata">Cancella filtro</button>
         ${tipo === 'lavaggi' ? `<label class="note" style="display:flex;align-items:center;gap:6px;margin-left:10px">Forme lavate per ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}:<input id="g-altre" inputmode="numeric" style="width:70px;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px" placeholder="0"></label>` : ''}
         <span class="spacer"></span>
         <button class="btn ghost sm" id="g-stampa">Stampa / PDF</button><button class="btn ghost sm" id="g-xlsx">Esporta Excel</button>
@@ -1526,6 +1529,7 @@ async function pgGiorno(tipo) {
       <div id="foglio"></div>`;
     eventiFoglio($('foglio'));
     const vai = async s => { if (!String(s).trim()) return; const d = parseData(s, +(DATA_SEL[tipo] || isoOggi()).slice(0, 4)); if (!d) { toast('Data non valida', true); $('g-data-txt').value = isoToIt(CUR.data || DATA_SEL[tipo]); return; } await vaiGiorno(tipo, d); };
+    $('g-canc').onclick = () => { FG = {}; applicaFiltriGiorno(); };
     $('g-azz').onclick = async () => { if (CUR.dirty && CUR.tipo) { const r = await chiediSalvataggio(); if (r === 'annulla') return; } DATA_SEL[tipo] = ''; CUR.dirty = false; CUR.data = null; pgGiorno(tipo); };
     $('g-data-txt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
     $('g-data-txt').addEventListener('change', e => vai(e.target.value));
@@ -1548,7 +1552,7 @@ async function pgGiorno(tipo) {
   } else if (vista === 'periodo') {
     await pgPeriodo(tipo);
   } else {
-    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<span id="el-bar" style="display:none"><button class="btn amber sm" id="el-salva-b">Salva modifiche</button> <button class="btn ghost sm" id="el-annulla-b">Annulla</button></span><span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
+    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<button class="btn ghost sm" id="el-canc" style="display:none" title="Togli tutti i filtri dell'elenco">Cancella filtro</button><span id="el-bar" style="display:none"><button class="btn amber sm" id="el-salva-b">Salva modifiche</button> <button class="btn ghost sm" id="el-annulla-b">Annulla</button></span><span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
     const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
     const blocca = () => { if (ELENCO.mod.size) { toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true); return true; } return false; };
     $('m-prev').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
