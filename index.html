@@ -1770,7 +1770,7 @@ async function pgAS400() {
       x.forme += num(r.forme); x.pulito += c.pulito == null ? 0 : mround(c.pulito); gr.set(k, x);
     }));
     const cols = [{ k: 'matr', l: 'Matricola', w: 90 }, { k: 'mmb', l: 'Mese/anno', w: 90, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 90 }, { k: 'forme', l: 'Forme', t: 'i', w: 70, tot: 1 }, { k: 'pulito', l: 'Pallet pulito (kg)', t: 'kg', w: 120, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 150 }];
-    T = Tabella($('as-corpo'), { cols, rows: [...gr.values()] });
+    T = Tabella($('as-corpo'), { cols, rows: [...gr.values()], ord: { k: 'codice', dir: 1 } });      // di default in ordine di codice articolo, dal più piccolo
   };
   $('as-giorni').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const d = b.dataset.d;
     if (d === '*') GIORNI_AS.sel = new Set([...mappa.keys()].filter(x => mappa.get(x).dati.length)); else if (d === '-') GIORNI_AS.sel = new Set(); else GIORNI_AS.sel.has(d) ? GIORNI_AS.sel.delete(d) : GIORNI_AS.sel.add(d);
