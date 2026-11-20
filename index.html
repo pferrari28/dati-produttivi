@@ -1373,7 +1373,7 @@ function righeElenco(tipo, mappa) {
   const out = [];
   [...mappa.keys()].sort().forEach(data => mappa.get(data).dati.forEach(r => {
     const cc = calcRiga(tipo, r, data);
-    if (tipo === 'lavaggi') out.push({ data, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), sporco: r.sporco === '' ? null : num(r.sporco), medio: cc.medio, pulito: cc.pulito, codice: cc.codice });
+    if (tipo === 'lavaggi') out.push({ data, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), sporco: r.sporco === '' ? null : num(r.sporco), medio: cc.medio, pulito: cc.pulito, codice: cc.codice, tipo: r.cod || '' });
     else {
       const o = { data, n: r.n, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), kgf: cc.kgf, stag: cc.stag, sporco: cc.sporco, lavorati: cc.lavorati, fmt: r.fmt, polpa: vuoto(r.polpa) ? null : num(r.polpa), segatura: cc.segatura, croste: cc.croste, pulitura: cc.pulitura, piall: cc.piall, linea: r.linea, pf: cc.pf, sfridi: cc.sfridi, marchio: r.marchio };
       if (S.prod === 'GP') { o.q = cc.q; o.ab = cc.ab; }
@@ -2017,7 +2017,7 @@ function xlSchedeConsorzio(righe, note, nome) {
   scarica(xlsxFormato(fogli), nome + '.xlsx');
 }
 
-// ---- LAVAGGI: colonne essenziali per il vecchio prospetto (data, matricola, mese/anno, lotto, forme, pallet sporco) ----
+// ---- LAVAGGI: colonne essenziali per il vecchio prospetto (data, matricola, mese/anno, lotto, forme, pallet sporco, tipologia) ----
 const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 function xlLavaggi(T, nome) {
   const spec = [
@@ -2027,6 +2027,7 @@ function xlLavaggi(T, nome) {
     { l: 'Lotto', w: 12, al: 'center', v: r => r.lotto || '' },
     { l: 'Forme', w: 10, al: 'center', f: 1, v: r => nv(r.forme) },
     { l: 'Pallet sporco', w: 14, al: 'center', f: FMT_X.kg2, v: r => nv(r.sporco) },
+    { l: 'Tipologia', w: 16, al: 'center', v: r => r.tipo || '' },
   ];
   const f = { nome: 'Lavaggi', righe: [spec.map(c => ({ v: c.l, s: { b: 1, al: 'center', bd: true, fill: 'FFFF00' } })), ...T.vis.map(r => spec.map(c => ({ v: c.v(r), s: { f: c.f, al: c.al, bd: true } })))], cols: spec.map(c => ({ w: c.w })), freeze: 1 };
   scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
