@@ -2073,7 +2073,7 @@ function xlLavorazioni(T, nome) {
   const spec = [
     { l: g('NUM RIGA', 'N. RIGA'), w: g(8.1, 8.7), hf: g(Y, V), df: g(Y, V), db: 1, al: 'center', f: 1, v: r => numOrTxt(r.n) },
     { l: 'DATA', w: 11.7, hf: Y, al: 'center', f: FMT_X.data, v: r => serData(r.data) },
-    { l: 'LOTTO', w: g(10, 9), hf: Y, al: 'left', v: r => r.lotto || '' },
+    { l: 'LOTTO', w: g(10, 9), hf: Y, al: 'left', v: r => gp ? numOrTxt(r.lotto || '') : (r.lotto || '') },      // padano: i lotti senza P (es. 26106) sono numeri, formato generale
     { l: 'MATRICOLA', w: g(12, 11.4), al: 'left', v: r => numOrTxt(r.matr) },
     { l: 'MESE/ANNO', w: g(12.6, 12.4), al: 'left', f: FMT_X.mmmyy, v: r => serMese(r.mese, r.anno) },
     { l: 'N. FORME INGRESSO', w: g(10.3, 13), hf: Y, f: FMT_X.int, v: r => nv(r.forme), tot: 'forme' },
@@ -2185,7 +2185,6 @@ const MENU = () => {
     { t: 'Stampe e controlli' },
     { id: 'polpa', n: 'Polpa', f: pgPolpa },
     { id: 'as400', n: pr ? 'Stampa registrazione AS400' : 'Registrazione AS400', f: () => window.pgAS400 ? pgAS400() : pgPresto() },
-    { id: 'prelievo', n: 'Prelievo magazzino', f: pgPrelievo },
     { id: 'totale', n: 'Totale lavaggi', f: pgTotaleLavaggi },
     pr ? { id: 'ocq', n: 'Invio OCQ mensile', f: () => window.pgOCQ ? pgOCQ() : pgPresto() } : null,
     pr ? { id: 'carpi', n: 'Rintracciabilità Carpi', f: () => window.pgCarpi ? pgCarpi() : pgPresto() } : null,
