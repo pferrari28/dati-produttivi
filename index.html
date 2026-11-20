@@ -270,6 +270,12 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .cs-fit .sheet{width:100% !important;min-width:0 !important;table-layout:auto;}
 .cs-fit .sheet th,.cs-fit .sheet td{padding-left:4px !important;padding-right:4px !important;}
 .cs-fit .sheet th{white-space:normal;}
+
+#print-area td[data-cod="MEZZANO"],#print-area td[data-cod="GRAN BON"]{background:#FFF0A0 !important;}
+#print-area td[data-cod="BIO"],#print-area td[data-cod="RETINATO"]{background:#C6EBC0 !important;}
+#print-area td[data-cod="SBIANCATO"]{background:#FFD08A !important;}
+#print-area td[data-cod="ALTRO"]{background:#DCCDF6 !important;}
+#print-area td[data-cod]{font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -826,7 +832,15 @@ function righeExport(T, intest) {
   if (cols.some(c => c.tot)) righe.push(cols.map((c, i) => i === 0 ? 'TOTALE' : c.tot ? tot[c.k] : ''));
   return righe;
 }
+function unisciMeseAnno(T) {                          // lavaggi: mese e anno in un'unica colonna, es. 10/25
+  const i = T.cols.findIndex(c => c.k === 'mese'), j = T.cols.findIndex(c => c.k === 'anno');
+  if (i < 0 || j < 0) return T;
+  const cols = T.cols.filter((c, k) => k !== j).map((c, k) => k === i ? { ...c, k: 'ma', l: 'Mese/anno', t: 'txt', w: 80, al: 'c' } : c);
+  const vis = T.vis.map(r => ({ ...r, ma: r.mese && r.anno ? String(r.mese).padStart(2, '0') + '/' + String(r.anno).slice(-2) : '' }));
+  return { ...T, cols, vis };
+}
 function esportaTabella(T, nome, titolo) {
+  if (titolo === 'Lavaggi') T = unisciMeseAnno(T);
   if (typeof EXPORT_FMT !== 'undefined' && EXPORT_FMT[titolo] && EXPORT_FMT[titolo](T, nome)) return;
   const righe = righeExport(T), tot = T.cols.some(c => c.tot);
   const g = [0]; if (tot) g.push(righe.length - 1);
@@ -835,7 +849,7 @@ function esportaTabella(T, nome, titolo) {
 function stampaTabella(T, titolo, sub, orient, alto, centra) {
   const v = T.vis, tot = T.totali(v), cols = T.cols;
   const th = cols.map(c => `<th${c.pw ? ` style="width:${c.pw};min-width:${c.pw};${c.pwMax ? `max-width:${c.pw};` : ''}"` : ''}>${esc(c.l)}</th>`).join('');   // pw: larghezza di stampa
-  const tb = v.map(r => '<tr>' + cols.map(c => `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('') + '</tr>').join('');
+  const tb = v.map(r => '<tr>' + cols.map(c => { const gc = (c.k === 'codice' || c.k === 'cod') ? gruppoCod(r[c.k]) : ''; return `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}"${gc ? ` data-cod="${gc}"` : ''}>${esc(valTxt(c, r[c.k]))}</td>`; }).join('') + '</tr>').join('');
   const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === (T.etNear ? Math.max(0, cols.findIndex(x => x.tot) - 1) : 0) ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
   stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient, alto, centra);
 }
