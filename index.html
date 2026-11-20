@@ -265,6 +265,11 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet td,.sheet th{border-width:0 1px 1px 0;}
 .sheet{width:100%;}
 .main-area{padding:0 16px 60px;}
+
+.cs-fit{overflow-x:hidden !important;}
+.cs-fit .sheet{width:100% !important;min-width:0 !important;table-layout:auto;}
+.cs-fit .sheet th,.cs-fit .sheet td{padding-left:4px !important;padding-right:4px !important;}
+.cs-fit .sheet th{white-space:normal;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -1777,7 +1782,8 @@ async function pgConsorzio() {
       elenco = (await trovaRighe(S.prod, Math.min(lo, hi), Math.max(lo, hi))).map(x => ({ data: x.data, r: x.riga }));
     }
     const lotti = [...new Set(elenco.map(x => x.r.lotto))]; await caricaInfo(S.prod, lotti); righe = [];
-    elenco.forEach(({ data: d, r }) => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab }); });
+    elenco.forEach(({ data: d, r }) => { const c = calcLavorazione(S.prod, d, r); righe.push({ n: r.n, data: d, fmt: r.fmt, tipo: r.linea, lotto: r.lotto, forme: num(r.forme), matr: r.matr, mm: mmaa(r.mese, r.anno), iniz: c.lavorati, fin: c.pf, sfridi: c.ab, ab: c.ab }); });
+    CONS.note = {}; righe.forEach((r, i) => { if (num(r.ab)) CONS.note[i] = fmtKg(r.ab); });      // Note: di partenza la voce Polpa + piatti della lavorazione (modificabile)
     CONS.pag = 0; disegna();
   };
   const pagine = () => Math.max(1, Math.ceil(righe.length / 15));
@@ -1786,7 +1792,7 @@ async function pgConsorzio() {
   const disegna = () => {
     $('cs-pag').textContent = ` Scheda ${CONS.pag + 1} di ${pagine()} · ${righe.length} righe `;
     const pr = paginaRighe(), tot = pr.reduce((s, r) => s + num(r.sfridi), 0);
-    $('cs-corpo').innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro"><thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note: kg utilizzati o conto lavoro</th></tr></thead><tbody>${pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td style="padding:0"><input data-nr="${CONS.pag * 15 + i}" value="${esc(CONS.note[CONS.pag * 15 + i] || '')}" style="border:0;width:220px;font:inherit;padding:5px 8px"></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="10" class="lbl" style="text-align:right">Totale sfridi</td><td>${fmtKg(tot)}</td><td></td></tr></tfoot></table></div><p class="note" style="margin-top:8px">Massimo 15 righe per scheda. La colonna Note è solo per la stampa (non viene salvata).</p>`;
+    $('cs-corpo').innerHTML = `<div class="sheet-wrap cs-fit"><table class="sheet tab-ro"><thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note: kg utilizzati o conto lavoro</th></tr></thead><tbody>${pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td style="padding:0"><input data-nr="${CONS.pag * 15 + i}" value="${esc(CONS.note[CONS.pag * 15 + i] || '')}" style="border:0;width:100%;min-width:70px;font:inherit;padding:5px 4px;text-align:right;background:transparent"></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="10" class="lbl" style="text-align:right">Totale sfridi</td><td>${fmtKg(tot)}</td><td></td></tr></tfoot></table></div><p class="note" style="margin-top:8px">Massimo 15 righe per scheda. La colonna Note parte con Polpa + piatti della lavorazione, puoi modificarla (solo per la stampa, non viene salvata).</p>`;
   };
   $('cs-corpo').addEventListener('input', e => { if (e.target.dataset.nr != null) CONS.note[e.target.dataset.nr] = e.target.value; });
   const MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
