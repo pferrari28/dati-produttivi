@@ -2022,7 +2022,7 @@ const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set
 function xlLavaggi(T, nome) {
   const spec = [
     { l: 'Data', w: 12, f: 'dd/mm/yyyy', al: 'center', v: r => r.data ? serData(r.data) : '' },
-    { l: 'Matricola', w: 12, al: 'center', v: r => numOrTxt(r.matr) },
+    { l: 'Matricola', w: 12, al: 'center', v: r => numOrTxt(S.prod === 'GP' ? String(r.matr ?? '').replace(/\s+/g, '') : r.matr) },   // padano: senza spazi (BS634), come vuole il vecchio file
     { l: 'Mese/anno', w: 12, al: 'center', v: r => (+r.mese >= 1 && +r.mese <= 12 && r.anno) ? MESI_BREVI[+r.mese - 1] + '-' + String(r.anno).slice(-2) : '' },
     { l: 'Lotto', w: 12, al: 'center', v: r => r.lotto || '' },
     { l: 'Forme', w: 10, al: 'center', f: 1, v: r => nv(r.forme) },
