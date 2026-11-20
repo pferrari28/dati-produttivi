@@ -686,6 +686,7 @@ function Tabella(cont, opt) {
 
   T.disegna = () => {
     const v = T.vis = T.visibili(), tot = T.totali(v);
+    const wPrima = cont.querySelector('.sheet-wrap'), scPrima = wPrima ? { t: wPrima.scrollTop, l: wPrima.scrollLeft, wx: window.scrollX, wy: window.scrollY } : null;
     const th = cols.map((c, ci) => {
       const f = T.filtri[c.k], o = T.ord && T.ord.k === c.k;
       return `<th data-c="${ci}" class="${f || o ? 'on' : ''}" ${c.w ? `style="min-width:${c.w}px"` : ''}>${esc(c.l)}<span class="ar">${o ? (T.ord.dir > 0 ? '▲' : '▼') : ''}${f ? ' ⏷' : ''}</span></th>`;
@@ -709,6 +710,7 @@ function Tabella(cont, opt) {
     const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
     cont.innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro" tabindex="0"><thead><tr>${th}</tr></thead><tbody>${tb || `<tr><td colspan="${cols.length}" class="empty">Nessun dato</td></tr>`}</tbody>${tf}</table></div>
       <div class="legend" style="margin-top:8px"><span style="margin-right:12px">${v.length}${v.length !== T.rows.length ? ' di ' + T.rows.length : ''} righe</span><span style="color:var(--muted)">Clic sul titolo: ordina / filtra · trascina o usa le frecce (con Maiusc) per selezionare e vedere la somma</span></div>`;
+    if (scPrima) { const nw = cont.querySelector('.sheet-wrap'); if (nw) { nw.scrollTop = scPrima.t; nw.scrollLeft = scPrima.l; } window.scrollTo(scPrima.wx, scPrima.wy); }   // resta nella stessa zona dello schermo
     T.tab = cont.querySelector('table');
     T.tab.addEventListener('mousedown', onDown); T.tab.addEventListener('keydown', onKey);
     if (opt.editable && opt.onEdit) T.tab.addEventListener('mousedown', e => {        // un clic su una cella modificabile la apre (dopo che il fuoco è passato dall'eventuale cella precedente)
@@ -1438,11 +1440,12 @@ async function salvaElenco() {
     }
     ELENCO.mod.clear(); if (tipo === 'lavaggi') INFO[S.prod].clear();
     toast(`Modifiche salvate (${giorni.length} ${giorni.length === 1 ? 'giornata' : 'giornate'})`);
-    pgElenco(tipo);
+    pgElenco(tipo, true);
   } catch (e) { toast('Salvataggio non riuscito: ' + (e.message || e), true); }
 }
 
-async function pgElenco(tipo) {
+async function pgElenco(tipo, mantieni) {
+  const sc0 = (() => { const w = document.querySelector('#elenco-corpo .sheet-wrap'); return w ? [w.scrollTop, w.scrollLeft] : null; })();
   let mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
   if (PRIMO[tipo]) {                                                  // prima apertura: se il mese corrente è vuoto, va all'ultimo mese con dati (max 3 indietro)
     PRIMO[tipo] = false;
@@ -1456,8 +1459,10 @@ async function pgElenco(tipo) {
   TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['forme'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
   aggiornaBarraElenco();
   $('el-salva-b').onclick = salvaElenco;
-  $('el-annulla-b').onclick = () => { ELENCO.mod.clear(); pgElenco(tipo); };
-  const wrap = box.querySelector('.sheet-wrap'); if (wrap) wrap.scrollTop = wrap.scrollHeight;       // si apre già in fondo, sulle ultime righe
+  $('el-annulla-b').onclick = () => { ELENCO.mod.clear(); pgElenco(tipo, true); };
+  const wrap = box.querySelector('.sheet-wrap');
+  if (mantieni && sc0 && wrap) { wrap.scrollTop = sc0[0]; wrap.scrollLeft = sc0[1]; }
+  else if (wrap) wrap.scrollTop = wrap.scrollHeight;       // si apre già in fondo, sulle ultime righe
   $('elenco-x').onclick = e => {
     const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
     if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco del mese', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
