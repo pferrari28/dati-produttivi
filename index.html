@@ -821,6 +821,7 @@ function righeExport(T, intest) {
   return righe;
 }
 function esportaTabella(T, nome, titolo) {
+  if (typeof EXPORT_FMT !== 'undefined' && EXPORT_FMT[titolo] && EXPORT_FMT[titolo](T, nome)) return;
   const righe = righeExport(T), tot = T.cols.some(c => c.tot);
   const g = [0]; if (tot) g.push(righe.length - 1);
   scarica(xlsxSemplice([{ nome: (titolo || 'Dati').slice(0, 31), righe, grassetto: g, larghezze: T.cols.map(c => Math.max(10, Math.round((c.w || 80) / 6))) }]), nome + '.xlsx');
@@ -1544,11 +1545,12 @@ async function pgTotaleLavaggi() {
   const main = $('main'); main.innerHTML = `<div class="page-title"><h2>Totale lavaggi · ${PRODOTTI[S.prod]}</h2></div><div id="tot-corpo"><div class="empty">Carico…</div></div>`;
   const dati = await datiFormeGiorno(ANNO_TOT), m = {};
   dati.forEach(x => { const mm = +x.data.slice(5, 7), gg = +x.data.slice(8, 10); (m[mm] = m[mm] || {})[gg] = +x.lavaggi + +x.altre; });
+  const altreAnno = dati.reduce((a, x) => a + (+x.altre || 0), 0);              // forme lavate per Carpi / Cerea nell'anno
   const tot = Array.from({ length: 13 }, (_, i) => i ? Object.values(m[i] || {}).reduce((a, b) => a + b, 0) : 0);
   const righe = [['Giorno', ...MESI_LUNGHI]]; for (let g = 1; g <= 31; g++) righe.push([g, ...Array.from({ length: 12 }, (_, i) => (m[i + 1] || {})[g] ?? '')]);
   righe.push(['TOTALE', ...tot.slice(1)]);
   const tab = `<table class="sheet tab-ro" style="width:auto"><thead><tr>${righe[0].map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${righe.slice(1, -1).map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'r' : 'c'}" ${i ? '' : 'style="background:var(--head);font-weight:600"'}>${v === '' ? '' : fmtKg0(v)}</td>`).join('')}</tr>`).join('')}</tbody><tfoot><tr>${righe[righe.length - 1].map((v, i) => `<td class="${i ? '' : 'lbl'}">${i ? fmtKg0(v) : v}</td>`).join('')}</tr></tfoot></table>`;
-  $('tot-corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="a-prev">◀</button><b>${ANNO_TOT}</b><button id="a-next">▶</button></span><span class="fb"><button class="btn ghost sm" id="t-stampa">Stampa / PDF</button><button class="btn ghost sm" id="t-xlsx">Esporta Excel</button></span><span class="info">Forme lavate per giorno (lavaggi + ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}) · totale anno <b>${fmtKg0(tot.reduce((a, b) => a + b, 0))}</b></span></div><div class="sheet-wrap">${tab}</div>`;
+  $('tot-corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="a-prev">◀</button><b>${ANNO_TOT}</b><button id="a-next">▶</button></span><span class="fb"><button class="btn ghost sm" id="t-stampa">Stampa / PDF</button><button class="btn ghost sm" id="t-xlsx">Esporta Excel</button></span><span class="info">Forme lavate per giorno (lavaggi + ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}) · totale anno <b>${fmtKg0(tot.reduce((a, b) => a + b, 0))}</b> · di cui <b>${fmtKg0(altreAnno)}</b> forme per ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}</span></div><div class="sheet-wrap">${tab}</div>`;
   $('a-prev').onclick = () => { ANNO_TOT--; pgTotaleLavaggi(); }; $('a-next').onclick = () => { ANNO_TOT++; pgTotaleLavaggi(); };
   $('t-stampa').onclick = () => stampaHTML(`Totale lavaggi ${PRODOTTI[S.prod]} ${ANNO_TOT}`, 'Forme lavate per giorno', tab.replace('class="sheet tab-ro" style="width:auto"', ''), 'landscape');
   $('t-xlsx').onclick = () => scarica(xlsxSemplice([{ nome: 'Totale lavaggi', righe: righe.map((r, ri) => ri ? r.map((v, i) => i && v !== '' ? +v : v) : r), grassetto: [0, righe.length - 1], larghezze: [10, ...Array(12).fill(12)] }]), `TotaleLavaggi_${S.prod}_${ANNO_TOT}.xlsx`);
@@ -1802,10 +1804,161 @@ async function pgConsorzio() {
   };
   $('cs-st').onclick = () => righe.length && stampa(false, false); $('cs-stc').onclick = () => righe.length && stampa(true, false);
   $('cs-sta').onclick = () => righe.length && stampa(false, true); $('cs-stac').onclick = () => righe.length && stampa(true, true);
-  $('cs-xl').onclick = () => { const v = paginaRighe(); scarica(xlsxSemplice([{ nome: 'Scheda consorzio', righe: [[...cols.map(c => c.l), 'Note'], ...v.map((r, i) => [...cols.map(c => { const x = r[c.k]; return (c.t === 'kg' || c.t === 'i') ? (x == null ? '' : +x) : c.t === 'd' ? isoToIt(x) : (x ?? ''); }), CONS.note[CONS.pag * 15 + i] || ''])], grassetto: [0], larghezze: [6, 12, 14, 16, 12, 10, 10, 12, 14, 14, 12, 30] }]), `SchedaConsorzio_${CONS.da}_${CONS.pag + 1}.xlsx`); };
+  $('cs-xl').onclick = () => xlSchedeConsorzio(righe, CONS.note, `SchedaConsorzio_${CONS.da}_${CONS.a}`);
   $('cs-p').onclick = () => { if (CONS.pag > 0) { CONS.pag--; disegna(); } }; $('cs-n').onclick = () => { if (CONS.pag < pagine() - 1) { CONS.pag++; disegna(); } };
   $('cs-da').onchange = $('cs-a').onchange = $('cs-rda').onchange = $('cs-ra').onchange = carica; $('cs-azz').onclick = () => { CONS.da = CONS.a = CONS.rda = CONS.ra = ''; pgConsorzio(); }; $('cs-oggi').onclick = () => { CONS.da = CONS.a = isoOggi(); pgConsorzio(); };
   await carica();
+}
+// ===== Esportazioni Excel nel formato dei file originali (colori, larghezze, formati, orientamento) =====
+const FMT_X = { data: 14, n0: 1, text: 49, mmmyy: '[$-410]mmm\\-yy;@', mmmmyy: '[$-410]mmmm\\-yy;@', kg2: '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-', int: '_-* #,##0_-;\\-* #,##0_-;_-* "-"??_-;_-@_-' };
+const GIALLO = 'FFFF00', VERDE = '66FF66';
+const serData = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 86400000) + 25569; };
+const serMese = (m, a) => { if (typeof a === 'undefined' && typeof m === 'string' && m.includes('/')) { [m, a] = m.split('/'); } return (+m && +a) ? serData(`${a}-${String(m).padStart(2, '0')}-01`) : ''; };
+const numOrTxt = v => v == null || v === '' ? '' : (/^\d+$/.test(String(v)) ? +v : String(v));
+const nv = v => v == null || v === '' || (typeof v === 'number' && isNaN(v)) ? '' : +(+v).toFixed(4);
+
+// Scrive un .xlsx con stili: fogli = [{ nome, righe: [[cella|valore]], cols: [{w, hidden}], rowH: {indice0: altezza}, merges: ['A1:B2'], freeze: n righe, repeat: n righe, fit, margins: [l,r,t,b], scale }]
+// cella = valore | { v, s: { f: formato, b, sz, fill, al, va, wrap, bd } }
+function xlsxFormato(fogli) {
+  const colL = n => { let s = ''; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const fontsL = ['11||0'], fillsL = ['none', 'gray125'], numL = [], xfL = [];
+  const ix = (arr, k) => { let i = arr.indexOf(k); if (i < 0) { arr.push(k); i = arr.length - 1; } return i; };
+  const xfId = s => {
+    s = s || {}; let nf = s.f == null ? 0 : s.f; if (typeof nf === 'string') nf = 164 + ix(numL, nf);
+    const font = ix(fontsL, `${s.sz || 11}||${s.b ? 1 : 0}`), fill = s.fill ? ix(fillsL, s.fill) : 0;
+    return ix(xfL, [nf, font, fill, s.bd ? 1 : 0, s.al || '', s.va || '', s.wrap ? 1 : 0].join('|'));
+  };
+  xfId({});
+  const sheets = fogli.map(f => {
+    const rows = f.righe.map((r, ri) => {
+      const ht = f.rowH && f.rowH[ri];
+      const cells = r.map((c, ci) => {
+        if (c == null) return ''; const o = (typeof c === 'object' && 'v' in c) ? c : { v: c }, ref = colL(ci) + (ri + 1), s = xfId(o.s), v = o.v;
+        if (v == null || v === '') return s ? `<c r="${ref}" s="${s}"/>` : '';
+        if (typeof v === 'number') return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+        return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+      }).join('');
+      return `<row r="${ri + 1}"${ht ? ` ht="${ht}" customHeight="1"` : ''}>${cells}</row>`;
+    }).join('');
+    const cols = (f.cols || []).map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.w || 9}" customWidth="1"${c.hidden ? ' hidden="1"' : ''}/>`).join('');
+    const mg = f.margins || [0.7, 0.7, 0.75, 0.75];
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${f.fit ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : ''}<sheetViews><sheetView workbookViewId="0">${f.freeze ? `<pane ySplit="${f.freeze}" topLeftCell="A${f.freeze + 1}" activePane="bottomLeft" state="frozen"/>` : ''}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>${cols ? '<cols>' + cols + '</cols>' : ''}<sheetData>${rows}</sheetData>${(f.merges || []).length ? `<mergeCells count="${f.merges.length}">${f.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : ''}<pageMargins left="${mg[0]}" right="${mg[1]}" top="${mg[2]}" bottom="${mg[3]}" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape"${f.fit ? ' fitToWidth="1" fitToHeight="0"' : ''}${f.scale ? ` scale="${f.scale}"` : ''}/></worksheet>`;
+  });
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${numL.length ? `<numFmts count="${numL.length}">${numL.map((c, i) => `<numFmt numFmtId="${164 + i}" formatCode="${xmlEsc(c)}"/>`).join('')}</numFmts>` : ''}<fonts count="${fontsL.length}">${fontsL.map(k => { const [sz, , b] = k.split('|'); return `<font>${b === '1' ? '<b/>' : ''}<sz val="${sz}"/><name val="Calibri"/></font>`; }).join('')}</fonts><fills count="${fillsL.length}">${fillsL.map(k => k === 'none' || k === 'gray125' ? `<fill><patternFill patternType="${k}"/></fill>` : `<fill><patternFill patternType="solid"><fgColor rgb="FF${k}"/><bgColor indexed="64"/></patternFill></fill>`).join('')}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfL.length}">${xfL.map(k => { const [nf, font, fill, bd, al, va, wrap] = k.split('|'); return `<xf numFmtId="${nf}" fontId="${font}" fillId="${fill}" borderId="${bd}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"${al || va || wrap === '1' ? ` applyAlignment="1"><alignment${al ? ` horizontal="${al}"` : ''}${va ? ` vertical="${va}"` : ''}${wrap === '1' ? ' wrapText="1"' : ''}/></xf>` : '/>'}`; }).join('')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const dn = fogli.map((f, i) => f.repeat ? `<definedName name="_xlnm.Print_Titles" localSheetId="${i}">'${xmlEsc(f.nome.slice(0, 31))}'!$1:$${f.repeat}</definedName>` : '').join('');
+  const files = [
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${fogli.map((f, i) => `<sheet name="${xmlEsc(f.nome.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>${dn ? `<definedNames>${dn}</definedNames>` : ''}</workbook>`],
+    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${fogli.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${fogli.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml', styles],
+    ...sheets.map((s, i) => [`xl/worksheets/sheet${i + 1}.xml`, s]),
+  ];
+  return creaZip(files);
+}
+
+// Costruisce un foglio "elenco" dagli spec colonna: { l, w, hf (colore titolo), df (colore dati), db (grassetto dati), al, f (formato), v: r => valore, tot: chiave del totale }
+function foglioElenco(nome, titolo, spec, righe, totali, opz) {
+  const sz = opz.sz || 11, hH = opz.hH, rH = opz.rH, bd = true;
+  const hs = c => ({ b: 1, sz, al: 'center', va: 'center', wrap: 1, bd, fill: c.hf });
+  const out = [[{ v: titolo, s: { b: 1, sz, fill: opz.titFill } }], spec.map(c => ({ v: c.l, s: hs(c) }))];
+  righe.forEach(r => out.push(spec.map(c => ({ v: c.v(r), s: { f: c.f, sz, al: c.al, va: 'center', bd, b: c.db, fill: c.df } }))));
+  if (totali) out.push(spec.map((c, i) => ({ v: c.tot ? nv(totali[c.tot]) : (i === opz.etTot ? 'TOTALE' : ''), s: { f: c.tot ? c.f : 0, sz, b: 1, al: c.tot ? undefined : 'center', va: 'center', bd } })));
+  const rowH = { 0: opz.titH || 20, 1: hH }; if (rH) for (let i = 2; i < out.length; i++) rowH[i] = rH;
+  return { nome, righe: out, cols: spec.map(c => ({ w: c.w })), rowH, freeze: 2, repeat: 2, fit: true, margins: opz.margins, scale: opz.scale };
+}
+
+// ---- LAVORAZIONI ----
+function xlLavorazioni(T, nome) {
+  const gp = S.prod === 'GP', Y = GIALLO, V = VERDE, g = (a, b) => gp ? b : a;
+  const spec = [
+    { l: g('NUM RIGA', 'N. RIGA'), w: g(8.1, 8.7), hf: g(Y, V), df: g(Y, V), db: 1, al: 'center', f: 1, v: r => numOrTxt(r.n) },
+    { l: 'DATA', w: 11.7, hf: Y, al: 'center', f: FMT_X.data, v: r => serData(r.data) },
+    { l: 'LOTTO', w: g(10, 9), hf: Y, al: 'left', v: r => r.lotto || '' },
+    { l: 'MATRICOLA', w: g(12, 11.4), al: 'left', v: r => numOrTxt(r.matr) },
+    { l: 'MESE/ANNO', w: g(12.6, 12.4), al: 'left', f: FMT_X.mmmyy, v: r => serMese(r.mese, r.anno) },
+    { l: 'N. FORME INGRESSO', w: g(10.3, 13), hf: Y, f: FMT_X.int, v: r => nv(r.forme), tot: 'forme' },
+    { l: 'KG FORMA', w: g(13.7, 12.1), f: FMT_X.kg2, v: r => nv(r.kgf) },
+    { l: 'STAG', w: 10.3, al: 'center', f: 1, v: r => nv(r.stag) },
+    { l: 'KG LAVORATI', w: 12.1, f: FMT_X.kg2, v: r => nv(r.lavorati), tot: 'lavorati' },
+    { l: 'FORMATO', w: 10.4, hf: Y, f: FMT_X.text, v: r => r.fmt || '' },
+    { l: 'KG POLPA', w: g(11.4, 10.7), hf: Y, f: FMT_X.kg2, v: r => nv(r.polpa), tot: 'polpa' },
+    { l: 'SEGATURA (CATEGORIA 3)', w: g(14.1, 11.9), f: FMT_X.kg2, v: r => nv(r.segatura), tot: 'segatura' },
+    { l: 'CROSTE', w: 10.1, f: FMT_X.kg2, v: r => nv(r.croste), tot: 'croste' },
+    { l: 'PULITURE A PERDERE (CALO PESO)', w: 13, f: FMT_X.kg2, v: r => nv(r.pulitura), tot: 'pulitura' },
+    { l: 'PIALLATURA PER TAGLIO LISCIO', w: 13, f: FMT_X.kg2, v: r => nv(r.piall), tot: 'piall' },
+    ...(gp ? [{ l: '18% PIATTI (SU TOT POLPA)', w: 11.1, f: FMT_X.kg2, v: r => nv(r.q), tot: 'q' }] : []),
+    { l: 'LINEA', w: 13.6, hf: Y, v: r => r.linea || '' },
+    { l: 'PRODOTTO FINITO', w: 14, f: FMT_X.kg2, v: r => nv(r.pf), tot: 'pf' },
+    { l: 'kg sfridi totali', w: 10.1, f: FMT_X.kg2, v: r => nv(r.sfridi), tot: 'sfridi' },
+    ...(gp ? [{ l: 'polpa + piatti per scheda consorzio', w: 13, f: FMT_X.kg2, v: r => nv(r.ab), tot: 'ab' }] : []),
+  ];
+  const righe = T.vis.map(r => ({ ...r, data: r.data || (typeof CUR !== 'undefined' && CUR.data) }));
+  const tot = T.cols.some(c => c.tot) ? T.totali(T.vis) : null;
+  const f = foglioElenco('LAVORAZIONI', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, righe, tot, { sz: 11, hH: g(55.5, 75.75), titFill: g(Y, undefined), etTot: 2, margins: g([0.7, 0.7, 0.75, 0.75], [0.25, 0.25, 0.75, 0.75]) });
+  scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
+}
+
+// ---- POLPA ----
+function xlPolpa(T, nome) {
+  const gp = S.prod === 'GP', Y = GIALLO;
+  const kg = r => gp ? (r.polpa == null && !num(r.q) ? '' : nv(r.ab)) : nv(r.polpa);
+  const spec = [
+    { l: 'NUM RIGA', w: 10.7, hf: Y, df: Y, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
+    { l: 'LOTTO', w: 13.7, db: 1, al: 'center', v: r => r.lotto || '' },
+    { l: 'DATA', w: 15.7, al: 'center', f: FMT_X.data, v: r => serData(r.data) },
+    { l: 'MATRICOLA', w: 20.3, al: 'center', v: r => numOrTxt(r.matr) },
+    { l: 'MESE/ANNO', w: 21.3, al: 'center', f: FMT_X.mmmyy, v: r => serMese(r.mese, r.anno) },
+    { l: 'N. FORME INGRESSO', w: 18.7, al: 'center', f: FMT_X.int, v: r => nv(r.forme) },
+    { l: 'FORMATO', w: 18.7, al: 'center', v: r => r.fmt || '' },
+    { l: 'LINEA', w: 25.7, db: 1, al: 'center', v: r => r.linea || '' },
+    { l: 'KG POLPA', w: 81.7, al: 'center', f: FMT_X.kg2, v: kg, tot: 'polpa' },
+    { l: 'NUM RIGA', w: 10.7, hf: Y, df: Y, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
+  ];
+  const somma = T.vis.reduce((a, r) => a + (+kg(r) || 0), 0);
+  const f = foglioElenco('POLPA', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, T.vis, { polpa: somma }, { sz: 15, hH: 39.95, rH: 39.95, titH: 21, titFill: Y, etTot: 7 });
+  scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
+}
+
+// ---- STAMPA REGISTRAZIONE AS400 ----
+function xlAS400(T, nome) {
+  const spec = [
+    { l: 'MATRICOLA', w: 21, al: 'center', v: r => numOrTxt(r.matr) },
+    { l: 'MESE/ANNO', w: 22.1, al: 'center', f: FMT_X.mmmyy, v: r => serMese(r.mm) },
+    { l: 'LOTTO', w: 27.6, al: 'center', v: r => r.lotto || '' },
+    { l: 'FORME', w: 15.3, al: 'center', f: FMT_X.int, v: r => nv(r.forme), tot: 'forme' },
+    { l: 'PALLET PULITO', w: 15.9, al: 'center', f: FMT_X.kg2, v: r => nv(r.pulito), tot: 'pulito' },
+    { l: 'CODICE ARTICOLO', w: 30.4, al: 'center', v: r => numOrTxt(r.codice) },
+  ];
+  const tot = T.totali(T.vis);
+  const f = foglioElenco('REGISTRAZIONE AS400', 'REGISTRAZIONE AS400 ' + PRODOTTI[S.prod].toUpperCase(), spec, T.vis, tot, { sz: 15, hH: 60, rH: 24.95, titH: 21, etTot: 2 });
+  scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
+}
+
+const EXPORT_FMT = { Lavorazioni: xlLavorazioni, Polpa: xlPolpa, AS400: xlAS400 };
+
+// ---- SCHEDA CONSORZIO (Grana Padano): un foglio per ogni scheda da 15 righe, stesso disegno di NUOVA SCHEDA CONSORZIO ----
+function xlSchedeConsorzio(righe, note, nome) {
+  const B = { sz: 12, al: 'center', va: 'center', bd: true }, H = { ...B, b: 1, wrap: 1 }, vuota = () => ({ v: '', s: B });
+  const n = Math.max(1, Math.ceil(righe.length / 15)), fogli = [];
+  for (let p = 0; p < n; p++) {
+    const pr = righe.slice(p * 15, p * 15 + 15), rr = Array.from({ length: 27 }, () => []);
+    rr[0][10] = { v: 'TRENTIN SPA', s: { b: 1, sz: 10, al: 'left' } }; rr[1][10] = { v: 'PEGOGNAGA (MN)', s: { b: 1, sz: 10, al: 'left' } };
+    const h1 = ['N.', 'DATA', 'LAVORAZIONE', '', 'LOTTO', 'NUMERO FORME', 'MATR.', 'MESE E ANNO', 'PESO', 'PESO', 'SFRIDI (KG)', 'NOTE'], h2 = ['', '', 'PESO', 'TIPO', '', '', '', '', 'INIZIALE (KG)', 'FINALE (KG)', '', ''];
+    h1.forEach((v, i) => rr[9][i] = { v, s: H }); h2.forEach((v, i) => rr[10][i] = { v, s: H });
+    for (let i = 0; i < 15; i++) {
+      const r = pr[i], R = rr[11 + i];
+      const cel = [r ? numOrTxt(r.n) : '', r ? serData(r.data) : '', r ? (r.fmt || '') : '', r ? (r.tipo || '') : '', r ? (r.lotto || '') : '', r ? nv(r.forme) : '', r ? numOrTxt(r.matr) : '', r ? serMese(r.mm) : '', r ? nv(r.iniz) : '', r ? nv(r.fin) : '', r ? nv(r.sfridi) : '', r ? (note[p * 15 + i] || '') : ''];
+      const fm = [FMT_X.n0, FMT_X.data, FMT_X.text, 0, FMT_X.n0, 0, 0, FMT_X.mmmmyy, FMT_X.kg2, FMT_X.kg2, FMT_X.kg2, 0];
+      cel.forEach((v, c) => R[c] = { v, s: { ...B, f: fm[c], b: c === 11 ? 1 : 0 } });
+    }
+    const R = rr[26]; for (let c = 0; c < 12; c++) R[c] = vuota();
+    R[8] = { v: 'TOTALE SFRIDI', s: { ...B, b: 1 } }; R[10] = { v: nv(pr.reduce((a, r) => a + (+r.sfridi || 0), 0)), s: { ...B, b: 1, f: FMT_X.kg2 } };
+    const rowH = { 0: 22.5, 26: 33 }; for (let i = 9; i <= 25; i++) rowH[i] = 15.75;
+    const w = [6.7, 11.9, 11.4, 17.6, 9.1, 11.1, 9.1, 15, 13.9, 13.6, 10.1, 10.1];
+    fogli.push({ nome: n > 1 ? `Scheda ${p + 1}` : 'NUOVA SCHEDA CONSORZIO', righe: rr, cols: w.map(x => ({ w: x })), rowH, merges: ['A10:A11', 'B10:B11', 'C10:D10', 'E10:E11', 'F10:F11', 'G10:G11', 'H10:H11', 'L10:L11', 'C27:D27', 'I27:J27'], margins: [0.315, 0.315, 0.748, 0.748] });
+  }
+  scarica(xlsxFormato(fogli), nome + '.xlsx');
 }
 // ====== Guscio: menu, selettore prodotto, login, avvio ======
 const MENU = () => {
