@@ -1742,6 +1742,7 @@ async function pgBackup() {
 }
 // ====== AS400, Invio OCQ mensile, Rintracciabilità Carpi, Scheda consorzio ======
 const mmaa = (m, a) => m && a ? String(m).padStart(2, '0') + '/' + a : '';
+const mmBreve = (m, a) => (+m >= 1 && +m <= 12 && a) ? MESI[+m - 1] + '-' + String(a).slice(-2) : '';      // ott-25 (solo visualizzazione e stampa AS400)
 
 // ---------- Registrazione AS400: lavaggi raggruppati per lotto ----------
 const GIORNI_AS = { sel: null };
@@ -1760,10 +1761,10 @@ async function pgAS400() {
   const disegna = () => {
     const gr = new Map();
     [...mappa.keys()].sort().filter(d => GIORNI_AS.sel.has(d)).forEach(d => mappa.get(d).dati.forEach(r => {
-      const c = calcLavaggio(S.prod, r), k = r.lotto + '|' + c.codice, x = gr.get(k) || { matr: r.matr, mm: mmaa(r.mese, r.anno), lotto: r.lotto, forme: 0, pulito: 0, codice: c.codice };
+      const c = calcLavaggio(S.prod, r), k = r.lotto + '|' + c.codice, x = gr.get(k) || { matr: r.matr, mm: mmaa(r.mese, r.anno), mmb: mmBreve(r.mese, r.anno), lotto: r.lotto, forme: 0, pulito: 0, codice: c.codice };
       x.forme += num(r.forme); x.pulito += c.pulito == null ? 0 : mround(c.pulito); gr.set(k, x);
     }));
-    const cols = [{ k: 'matr', l: 'Matricola', w: 90 }, { k: 'mm', l: 'Mese/anno', w: 90, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 90 }, { k: 'forme', l: 'Forme', t: 'i', w: 70, tot: 1 }, { k: 'pulito', l: 'Pallet pulito (kg)', t: 'kg', w: 120, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 150 }];
+    const cols = [{ k: 'matr', l: 'Matricola', w: 90 }, { k: 'mmb', l: 'Mese/anno', w: 90, al: 'c' }, { k: 'lotto', l: 'Lotto', w: 90 }, { k: 'forme', l: 'Forme', t: 'i', w: 70, tot: 1 }, { k: 'pulito', l: 'Pallet pulito (kg)', t: 'kg', w: 120, tot: 1 }, { k: 'codice', l: 'Codice articolo', w: 150 }];
     T = Tabella($('as-corpo'), { cols, rows: [...gr.values()] });
   };
   $('as-giorni').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const d = b.dataset.d;
