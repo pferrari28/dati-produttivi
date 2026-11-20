@@ -364,7 +364,7 @@ function parseData(s, anno) {
 }
 
 // ---------- regole del dominio ----------
-const RE_LOTTO = /^(\d{2})?P\d+$/;                                     // 26P123 oppure P1792
+const RE_LOTTO = /^((\d{2})?P\d+|\d{4,7})$/;                          // 26P123 oppure P1792; oppure lotto fornitore solo numerico (es. 22248, da Cerea)
 const LINEE = { S: 'SV', F: 'FILMATO', T: 'TAGLIO LISCIO' };
 const LINEE_OK = ['SV', 'FILMATO', 'TAGLIO LISCIO', 'PRETAGLIATO'];
 const TL = 'TAGLIO LISCIO';
@@ -929,7 +929,7 @@ function controlli(tipo, i) {
   const r = CUR.righe[i], o = {}, p = par(), E = (k, m) => { if (!o[k]) o[k] = { lv: 'e', m }; }, W = (k, m) => { if (!o[k]) o[k] = { lv: 'w', m }; };
   const attiva = r.lotto || r.forme || r.sporco || r.polpa || r.fmt || r.linea;
   if (!attiva) return o;
-  if (!r.lotto) E('lotto', 'Lotto mancante'); else if (!RE_LOTTO.test(r.lotto)) E('lotto', 'Lotto non valido (es. 26P123 oppure P1792)');
+  if (!r.lotto) E('lotto', 'Lotto mancante'); else if (!RE_LOTTO.test(r.lotto)) E('lotto', 'Lotto non valido (es. 26P123, P1792 oppure lotto fornitore 22248)');
   const reg = REG.get(r.lotto), info = tipo === 'lavorazioni' ? infoLotto(S.prod, r.lotto) : null;
   const manuale = RE_LOTTO.test(r.lotto || '') && !reg && !info && REG.has(r.lotto);
   const facolt = tipo === 'lavaggi' && senzaMatr(S.prod, r);
