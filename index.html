@@ -285,6 +285,10 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #as-corpo .sheet th{font-size:15px;}
 #print-area .sp-as400 table{font-size:15pt;}
 #print-area .sp-as400 th{font-size:13pt;}
+
+/* Lavorazioni giornata: Forme in grassetto, Stagionatura normale */
+.sheet td.fb input{font-weight:700;}
+.sheet td.calc[data-k=stag]{font-weight:400;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -384,7 +388,14 @@ const LINEE = { S: 'SV', F: 'FILMATO', T: 'TAGLIO LISCIO' };
 const LINEE_OK = ['SV', 'FILMATO', 'TAGLIO LISCIO', 'PRETAGLIATO'];
 const TL = 'TAGLIO LISCIO';
 const FORMATI_FISSI = ['1KG', '2KG', '1/2', 'QUARTI', 'OTTAVI'];
-const normFormato = v => { const s = String(v ?? '').trim().toUpperCase().replace(/\s+/g, ''), m = /^(\d+)(G|GR|GRAMMI)?$/.exec(s); return m ? m[1] + 'G' : s; };   // 450 → 450G
+const normFormato = v => {
+  const s = String(v ?? '').trim().toUpperCase().replace(/\s+/g, ''), m = /^(\d+)(G|GR|GRAMMI)?$/.exec(s), k = /^(\d+)K(G)?$/.exec(s);
+  if (m) return m[1] + 'G';                                          // 450 → 450G
+  if (k) return k[1] + 'KG';                                         // 1k / 2kg → 1KG / 2KG
+  if (s === 'O') return 'OTTAVI';                                    // o → ottavi
+  if (s === 'Q') return 'QUARTI';                                    // q → quarti
+  return s;
+};
 const grammi = f => { const m = /^(\d+)G$/.exec(f); return m ? +m[1] : null; };
 const formatoOk = f => grammi(f) != null || FORMATI_FISSI.includes(f);
 const PARAM_DEF = {
@@ -1035,7 +1046,7 @@ function celleRiga(tipo, i, cols) {
       const manuale = (c.t === 'kgf' && !vuoto(r.kgf)) || (c.t === 'ov' && !vuoto(r[k])) ? ' edited' : '';
       const num_ = (c.t === 'int' || c.t === 'kg' || c.t === 'ov' || c.t === 'kgf') ? ` data-v="${v ?? ''}"` : '';
       const txt = (r.fx && r.fx[k]) ? '' : mostra(c.t, v);
-      h += `<td data-i="${i}" data-c="${ci}" data-f="${k}" class="${cls}${manuale}${c.t === 'kg' || c.t === 'int' || c.t === 'ov' || c.t === 'kgf' ? ' r' : c.t === 'mese' || c.t === 'anno' ? ' c' : ''}"${tip}${num_}><input ${inpAttr(c)} value="${esc(txt || mostra(c.t, v))}"></td>`;
+      h += `<td data-i="${i}" data-c="${ci}" data-f="${k}" class="${cls}${manuale}${k === 'forme' && tipo === 'lavorazioni' ? ' fb' : ''}${c.t === 'kg' || c.t === 'int' || c.t === 'ov' || c.t === 'kgf' ? ' r' : c.t === 'mese' || c.t === 'anno' ? ' c' : ''}"${tip}${num_}><input ${inpAttr(c)} value="${esc(txt || mostra(c.t, v))}"></td>`;
     } else if (c.t === 'cod') {
       const v = cc.codice, manuale = r.cod ? ' edited' : '';
       h += `<td data-i="${i}" data-c="${ci}" data-f="cod" class="${cls}${manuale}"${tip}><input ${inpAttr(c)} value="${esc(v)}"></td>`;
@@ -1181,8 +1192,9 @@ function disegnaFoglioMantieniFocus(i) {
   const fAtt = att && att.tagName === 'INPUT' ? att.closest('td').dataset : null;
   const tr = document.querySelector(`#foglio-t tbody tr[data-i="${i}"]`); if (!tr) return;
   cols.forEach((c, ci) => {
-    const td = tr.querySelector(`td[data-f="${c.k}"]`); if (!td || (fAtt && td.contains(att))) return;
-    const inp = td.querySelector('input'); if (inp) { const r = CUR.righe[i]; inp.value = c.t === 'cod' ? calcRiga(tipo, r, CUR.data).codice : mostra(c.t, r[c.k]); }
+    const td = tr.querySelector(`td[data-f="${c.k}"]`); if (!td) return;
+    const inp = td.querySelector('input'); if (fAtt && td.contains(att) && inp && inp.value !== '') return;   // non tocca il testo già scritto nella cella in cui si sta scrivendo
+    if (inp) { const r = CUR.righe[i]; inp.value = c.t === 'cod' ? calcRiga(tipo, r, CUR.data).codice : mostra(c.t, r[c.k]); }
   });
   aggiornaTutteRighe();
 }
