@@ -697,12 +697,13 @@ function Tabella(cont, opt) {
       if (r._ult) cls = cls ? cls.replace('sepm', 'sepm ult') : ' class="ult"';
       return `<tr${cls}>` + cols.map((c, ci) => {
         const x = valTxt(c, r[c.k]);
+        const ed = (opt.editable || []).includes(c.k) ? ' data-ed="1"' : '';
         const al = (c.t === 'kg' || c.t === 'i') ? 'r' : (c.t === 'd' || c.al === 'c') ? 'c' : '';
         const neg = (c.t === 'kg' && r[c.k] < 0) ? ' style="color:var(--danger)"' : '';
         const warn = r['_w_' + c.k] ? ` data-tip="${esc(r['_w_' + c.k])}"` : '';
         const bg = r['_w_' + c.k] ? ' style="background:var(--warn-bg)"' : '';
         const gc = (c.k === 'cod' || c.k === 'codice' || c.k === 'codart') ? gruppoCod(x) : '', cod = gc ? ` data-cod="${gc}"` : '';
-        return `<td class="${al}${c.b ? ' b' : ''}${c.k === 'pf' && typeof r[c.k] === 'number' && r[c.k] < 0 ? ' negpf' : ''}" data-r="${ri}" data-c="${ci}"${neg}${warn}${bg}${cod}${opt.colData && c.k === 'data' ? ` data-dc="${opt.colData}"` : ''}>${esc(x)}</td>`;
+        return `<td class="${al}${c.b ? ' b' : ''}${c.k === 'pf' && typeof r[c.k] === 'number' && r[c.k] < 0 ? ' negpf' : ''}" data-r="${ri}" data-c="${ci}"${ed}${neg}${warn}${bg}${cod}${opt.colData && c.k === 'data' ? ` data-dc="${opt.colData}"` : ''}>${esc(x)}</td>`;
       }).join('') + '</tr>';
     }).join('');
     const tf = cols.some(c => c.tot) ? `<tfoot><tr>${cols.map((c, ci) => ci === 0 ? `<td class="lbl">Totale${v.length !== T.rows.length ? ' (filtrato)' : ''}</td>` : c.tot ? `<td>${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr></tfoot>` : '';
@@ -710,11 +711,22 @@ function Tabella(cont, opt) {
       <div class="legend" style="margin-top:8px"><span style="margin-right:12px">${v.length}${v.length !== T.rows.length ? ' di ' + T.rows.length : ''} righe</span><span style="color:var(--muted)">Clic sul titolo: ordina / filtra · trascina o usa le frecce (con Maiusc) per selezionare e vedere la somma</span></div>`;
     T.tab = cont.querySelector('table');
     T.tab.addEventListener('mousedown', onDown); T.tab.addEventListener('keydown', onKey);
+    if (opt.editable && opt.onEdit) T.tab.addEventListener('dblclick', e => { const td = e.target.closest('td[data-ed]'); if (td && !td.querySelector('input')) apriModificaCella(td); });
     T.tab.querySelectorAll('thead th').forEach(h => h.addEventListener('click', e => { e.stopPropagation(); apriFiltro(h); }));
     T.tab.querySelectorAll('td[data-tip]').forEach(td => { td.addEventListener('mouseenter', e => mostraTip(e.target.dataset.tip, e, true)); td.addEventListener('mouseleave', nascondiTip); });
     T.sel = null; nascondiSomma(); fire();
   };
   T.aggiorna = (rows) => { T.rows = rows; T.disegna(); };
+  function apriModificaCella(td) {                  // doppio clic: campo di scrittura nella cella; Invio conferma, Esc annulla
+    const row = T.vis[+td.dataset.r], c = cols[+td.dataset.c]; if (!row || !c) return;
+    const inp = document.createElement('input'); inp.value = row[c.k] == null ? '' : row[c.k];
+    inp.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;padding:2px 4px;border:1px solid var(--link);background:#fff;';
+    td.innerHTML = ''; td.appendChild(inp); inp.focus(); inp.select();
+    let chiuso = false;
+    const fine = ok => { if (chiuso) return; chiuso = true; if (ok) opt.onEdit(row, c.k, inp.value); else T.disegna(); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fine(true); } else if (e.key === 'Escape') { e.preventDefault(); fine(false); } });
+    inp.addEventListener('blur', () => fine(true));
+  }
 
   // ---- selezione ----
   const cella = (r, c) => T.tab && T.tab.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
@@ -1371,7 +1383,7 @@ function colsElenco(tipo) {
 }
 function righeElenco(tipo, mappa) {
   const out = [];
-  [...mappa.keys()].sort().forEach(data => mappa.get(data).dati.forEach(r => {
+  [...mappa.keys()].sort().forEach(data => mappa.get(data).dati.forEach((r, idx) => {
     const cc = calcRiga(tipo, r, data);
     if (tipo === 'lavaggi') out.push({ data, lotto: r.lotto, matr: r.matr, mese: r.mese, anno: r.anno, forme: num(r.forme), sporco: r.sporco === '' ? null : num(r.sporco), medio: cc.medio, pulito: cc.pulito, codice: cc.codice, tipo: r.cod || '' });
     else {
@@ -1379,12 +1391,40 @@ function righeElenco(tipo, mappa) {
       if (S.prod === 'GP') { o.q = cc.q; o.ab = cc.ab; }
       out.push(o);
     }
+    const src = out[out.length - 1]; src._d = data; src._i = idx;      // riga di origine: serve per modificare dall'elenco
   }));
   if (tipo === 'lavorazioni') out.forEach((o, i) => { if (!out[i + 1] || out[i + 1].data !== o.data) o._ult = true; });   // ultima riga di ogni giornata
   return out;
 }
 const tipoColonna = cols => cols.map(c => c.t === 'i0' ? { ...c, t: 't' } : c);
 let TAB_ELENCO = null;
+// ---- modifiche dall'elenco del mese ----
+const ELENCO = { tipo: null, mk: null, mappa: new Map(), mod: new Set() };
+function aggiornaBarraElenco() { const b = $('el-bar'); if (b) b.style.display = ELENCO.mod.size ? '' : 'none'; }
+function editaElenco(tipo, row, k, raw) {
+  const g = ELENCO.mappa.get(row._d), r = g && g.dati[row._i], c = colsGiorno(tipo).find(x => x.k === k);
+  if (r && c) {
+    const n = norm(c.t, raw, r, k);
+    if (n.err) toast(n.err, true);
+    else if (n.v === '' || n.v == null) { if (r[k] !== undefined) { delete r[k]; ELENCO.mod.add(row._d); } }
+    else if (r[k] !== n.v) { r[k] = n.v; ELENCO.mod.add(row._d); }
+  }
+  TAB_ELENCO.aggiorna(righeElenco(tipo, ELENCO.mappa)); aggiornaBarraElenco();
+}
+async function salvaElenco() {
+  const tipo = ELENCO.tipo, giorni = [...ELENCO.mod]; if (!giorni.length) return;
+  try {
+    for (const d of giorni) {
+      const g = ELENCO.mappa.get(d);
+      const pulite = g.dati.filter(r => !rigaVuota(r)).map(r => { const o = { ...r }; Object.keys(o).forEach(k => { if (o[k] === '' || o[k] == null) delete o[k]; }); return o; });
+      await DB.salva(TIPI[tipo].tab, S.prod, d, pulite, tipo === 'lavaggi' ? num(g.altre) : 0);
+    }
+    ELENCO.mod.clear(); if (tipo === 'lavaggi') INFO[S.prod].clear();
+    toast(`Modifiche salvate (${giorni.length} ${giorni.length === 1 ? 'giornata' : 'giornate'})`);
+    pgElenco(tipo);
+  } catch (e) { toast('Salvataggio non riuscito: ' + (e.message || e), true); }
+}
+
 async function pgElenco(tipo) {
   let mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
   if (PRIMO[tipo]) {                                                  // prima apertura: se il mese corrente è vuoto, va all'ultimo mese con dati (max 3 indietro)
@@ -1393,9 +1433,13 @@ async function pgElenco(tipo) {
     if ($('m-lab')) $('m-lab').textContent = meseLabel(mk);
   }
   if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
-  const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
+  ELENCO.tipo = tipo; ELENCO.mk = mk; ELENCO.mappa = new Map([...mappa].map(([d, g]) => [d, { ...g, dati: g.dati.map(r => ({ ...r })) }]));   // copia di lavoro: le modifiche non toccano la cache finché non si salva
+  const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, ELENCO.mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null });
+  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['forme'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
+  aggiornaBarraElenco();
+  $('el-salva-b').onclick = salvaElenco;
+  $('el-annulla-b').onclick = () => { ELENCO.mod.clear(); pgElenco(tipo); };
   const wrap = box.querySelector('.sheet-wrap'); if (wrap) wrap.scrollTop = wrap.scrollHeight;       // si apre già in fondo, sulle ultime righe
   $('elenco-x').onclick = e => {
     const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
@@ -1410,7 +1454,7 @@ async function pgGiorno(tipo) {
   main.innerHTML = `<div class="page-title"><h2>${TIPI[tipo].nome} · ${PRODOTTI[S.prod]}</h2></div>
     <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button><button data-v="periodo" class="${vista === 'periodo' ? 'on' : ''}">Ricerca tra date</button></div>
     <div id="corpo"></div>`;
-  main.querySelector('.subtabs').onclick = async e => { const v = e.target.dataset.v; if (!v || v === vista) return; if (CUR.dirty && vista === 'giorno') { const r = await chiediSalvataggio(); if (r === 'annulla') return; } V[tipo] = v; pgGiorno(tipo); };
+  main.querySelector('.subtabs').onclick = async e => { const v = e.target.dataset.v; if (!v || v === vista) return; if (ELENCO.mod.size && vista === 'elenco') return toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true); if (CUR.dirty && vista === 'giorno') { const r = await chiediSalvataggio(); if (r === 'annulla') return; } V[tipo] = v; pgGiorno(tipo); };
   if (vista === 'giorno') {
     $('corpo').innerHTML = `<div class="daybar" style="top:0">
         <label for="g-data-txt">Data</label>
@@ -1450,10 +1494,11 @@ async function pgGiorno(tipo) {
   } else if (vista === 'periodo') {
     await pgPeriodo(tipo);
   } else {
-    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
+    $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<span id="el-bar" style="display:none"><button class="btn amber sm" id="el-salva-b">Salva modifiche</button> <button class="btn ghost sm" id="el-annulla-b">Annulla</button></span><span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
     const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
-    $('m-prev').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
-    $('m-next').onclick = () => { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 1); agg(); };
+    const blocca = () => { if (ELENCO.mod.size) { toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true); return true; } return false; };
+    $('m-prev').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
+    $('m-next').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 1); agg(); };
     $('nuova-g').onclick = () => {
       apriModal(`<h2>Registra nuova giornata</h2><p>Scrivi la data (per esempio 191126 oppure 19/11/2026).</p><input id="ng-data" style="font:inherit;font-size:1.1rem;padding:8px 10px;width:100%;border:1px solid var(--line);border-radius:6px" inputmode="numeric" placeholder="gg/mm/aaaa" autocomplete="off"><div class="modal-btns"><button class="btn ghost" data-close>Annulla</button><button class="btn ghost" id="ng-oggi">Oggi</button><button class="btn" id="ng-ok">Apri</button></div>`);
       const apri = d => { chiudiModal(); V[tipo] = 'giorno'; DATA_SEL[tipo] = d; pgGiorno(tipo); };
@@ -1464,7 +1509,7 @@ async function pgGiorno(tipo) {
     agg();
   }
 }
-window.addEventListener('beforeunload', e => { if (CUR.dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (CUR.dirty || ELENCO.mod.size) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---- ricerca tra due date (es. dal 10/10/2026 al 10/11/2026) ----
 async function pgPeriodo(tipo) {
@@ -2060,6 +2105,7 @@ function disegnaMenu() {
   $('side-t').innerHTML = 'Dati produttivi<small>' + PRODOTTI[S.prod] + '</small>';
 }
 async function vai(id) {
+  if (ELENCO.mod.size) return toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true);
   if (CUR.dirty && V[CUR.tipo] === 'giorno' && (S.page === 'lavaggi' || S.page === 'lavorazioni')) { const r = await chiediSalvataggio(); if (r === 'annulla') return; }
   if ((id === 'lavaggi' || id === 'lavorazioni') && S.page !== id) V[id] = 'elenco';          // arrivando da un'altra pagina si apre l'elenco, già in fondo
   const m = MENU().find(x => x.id === id) || MENU().find(x => x.id); S.page = m.id; try { sessionStorage.setItem('dp_page', S.page); } catch (e) { }
