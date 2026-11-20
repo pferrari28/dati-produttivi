@@ -276,6 +276,9 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #print-area td[data-cod="SBIANCATO"]{background:#FFD08A !important;}
 #print-area td[data-cod="ALTRO"]{background:#DCCDF6 !important;}
 #print-area td[data-cod]{font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+#print-area .sp-as400 th,#print-area .sp-as400 td{padding:15px 8px !important;}
+#print-area .sp-as400 table{line-height:1.4;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -870,12 +873,12 @@ function esportaTabella(T, nome, titolo) {
   const g = [0]; if (tot) g.push(righe.length - 1);
   scarica(xlsxSemplice([{ nome: (titolo || 'Dati').slice(0, 31), righe, grassetto: g, larghezze: T.cols.map(c => Math.max(10, Math.round((c.w || 80) / 6))) }]), nome + '.xlsx');
 }
-function stampaTabella(T, titolo, sub, orient, alto, centra) {
+function stampaTabella(T, titolo, sub, orient, alto, centra, cls) {
   const v = T.vis, tot = T.totali(v), cols = T.cols;
   const th = cols.map(c => `<th${c.pw ? ` style="width:${c.pw};min-width:${c.pw};${c.pwMax ? `max-width:${c.pw};` : ''}"` : ''}>${esc(c.l)}</th>`).join('');   // pw: larghezza di stampa
   const tb = v.map(r => '<tr>' + cols.map(c => { const gc = (c.k === 'codice' || c.k === 'cod') ? gruppoCod(r[c.k]) : ''; return `<td class="${(c.t === 'kg' || c.t === 'i') ? 'r' : ''}"${gc ? ` data-cod="${gc}"` : ''}>${esc(valTxt(c, r[c.k]))}</td>`; }).join('') + '</tr>').join('');
   const tf = cols.some(c => c.tot) ? `<tr class="tot">${cols.map((c, i) => i === (T.etNear ? Math.max(0, cols.findIndex(x => x.tot) - 1) : 0) ? '<td>TOTALE</td>' : c.tot ? `<td class="r">${c.t === 'i' ? fmtKg0(tot[c.k]) : fmtKg(tot[c.k])}</td>` : '<td></td>').join('')}</tr>` : '';
-  stampaHTML(titolo, sub, `<table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table>`, orient, alto, centra);
+  stampaHTML(titolo, sub, `<div class="${cls || ''}"><table><thead><tr>${th}</tr></thead><tbody>${tb}${tf}</tbody></table></div>`, orient, alto, centra);
 }
 const barraExport = (id) => `<span class="fb" id="${id}"><button class="btn ghost sm" data-x="stampa">Stampa / PDF</button><button class="btn ghost sm" data-x="xlsx">Esporta Excel</button></span>`;
 // ====== Fogli giornalieri modificabili: Lavaggi e Lavorazioni ======
@@ -1780,7 +1783,7 @@ async function pgAS400() {
   $('as400-oggi').onclick = () => { INTERVALLO.as400 = { da: isoOggi(), a: isoOggi() }; pgAS400(); };
   $('as400-da').onchange = $('as400-a').onchange = () => { GIORNI_AS.sel = null; carica(); };
   $('as400-x').onclick = e => { const x = e.target.dataset.x; if (!x || !T) return; const i = INTERVALLO.as400, sub = `lavaggi dal ${isoToIt(i.da)} al ${isoToIt(i.a)} · ${GIORNI_AS.sel.size} giornate`;
-    if (x === 'stampa') stampaTabella(T, 'Registrazione AS400 ' + PRODOTTI[S.prod], sub, 'landscape', true); else esportaTabella(T, `AS400_${S.prod}_${i.da}_${i.a}`, 'AS400'); };
+    if (x === 'stampa') stampaTabella(T, 'Registrazione AS400 ' + PRODOTTI[S.prod], sub, 'landscape', true, false, 'sp-as400'); else esportaTabella(T, `AS400_${S.prod}_${i.da}_${i.a}`, 'AS400'); };
   await carica();
 }
 
