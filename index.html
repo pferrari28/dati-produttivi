@@ -1754,7 +1754,7 @@ async function pgCarpi() {
 // ---------- Scheda consorzio (solo Grana Padano) ----------
 const CONS = { da: '', a: '', rda: '', ra: '', pag: 0, note: {} };
 async function pgConsorzio() {
-  const main = $('main'), off = (IMP.consorzio_offset && IMP.consorzio_offset.v) || { x: 0, y: 85 };      // di partenza la tabella parte verso metà pagina
+  const main = $('main'), off = (IMP.consorzio_offset2 && IMP.consorzio_offset2.v) || { x: 0, y: 0 };      // posizioni già calibrate sul modulo; qui solo piccole correzioni
   main.innerHTML = `<div class="page-title"><h2>Scheda consorzio · ${PRODOTTI[S.prod]}</h2></div>
     <div class="formrow"><label>Dal<input id="cs-da" style="width:110px" value="${isoToIt(CONS.da)}"></label><label>Al<input id="cs-a" style="width:110px" value="${isoToIt(CONS.a)}"></label><button class="btn ghost sm" id="cs-oggi">Solo oggi</button><button class="btn ghost sm" id="cs-azz" title="Svuota date e righe">Azzera</button>
       <label>Stampa da riga n.<input id="cs-rda" style="width:80px" inputmode="numeric" value="${CONS.rda}"></label><label>a riga n.<input id="cs-ra" style="width:80px" inputmode="numeric" value="${CONS.ra}"></label>
@@ -1789,18 +1789,45 @@ async function pgConsorzio() {
     $('cs-corpo').innerHTML = `<div class="sheet-wrap"><table class="sheet tab-ro"><thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note: kg utilizzati o conto lavoro</th></tr></thead><tbody>${pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td style="padding:0"><input data-nr="${CONS.pag * 15 + i}" value="${esc(CONS.note[CONS.pag * 15 + i] || '')}" style="border:0;width:220px;font:inherit;padding:5px 8px"></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="10" class="lbl" style="text-align:right">Totale sfridi</td><td>${fmtKg(tot)}</td><td></td></tr></tfoot></table></div><p class="note" style="margin-top:8px">Massimo 15 righe per scheda. La colonna Note è solo per la stampa (non viene salvata).</p>`;
   };
   $('cs-corpo').addEventListener('input', e => { if (e.target.dataset.nr != null) CONS.note[e.target.dataset.nr] = e.target.value; });
+  const MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const meseAnno = mm => { const [m, a] = String(mm || '').split('/'); return MESI_IT[+m - 1] ? MESI_IT[+m - 1] + '-' + String(a).slice(-2) : (mm || ''); };
+  const CSS_SC = `<style>
+    #print-area .sc{position:relative;width:277mm;height:188mm;font-family:Calibri,Arial,Helvetica,sans-serif;color:#000;}
+    #print-area .sc .ab{position:absolute;}
+    #print-area .sc table{position:absolute;border-collapse:collapse;table-layout:fixed;width:280mm;font-size:10.5pt;}
+    #print-area .sc th,#print-area .sc td{border:0.25mm solid #000;padding:0 1mm;height:5.4mm;line-height:1;text-align:center;vertical-align:middle;white-space:nowrap;overflow:hidden;background:none;font-weight:normal;}
+    #print-area .sc th{font-weight:bold;white-space:normal;font-size:10pt;}
+    #print-area .sc td.nb{border:none;}
+    #print-area .sc tr.tt td{height:10mm;font-weight:bold;}
+    #print-area .sc .bx{border:0.25mm solid #000;}
+  </style>`;
+  const W_COL = [6.7, 11.9, 11.4, 17.6, 9.1, 11.1, 9.1, 15, 13.9, 13.6, 10.1, 10.1].map(x => (x * 2.006).toFixed(2) + 'mm');
+  // Posizioni misurate sul modulo prestampato e sulla vecchia stampa da Excel (A4 orizzontale, margini pagina 10 mm; coordinate in mm dal bordo del foglio)
   const pagHtml = (p, completa, ox, oy, ultima) => {
     const pr = righe.slice(p * 15, p * 15 + 15), tot = pr.reduce((s, r) => s + num(r.sfridi), 0);
-    const body = pr.map((r, i) => `<tr>${cols.map(c => `<td class="${c.t === 'kg' || c.t === 'i' ? 'r' : ''}">${esc(valTxt(c, r[c.k]))}</td>`).join('')}<td>${esc(CONS.note[p * 15 + i] || '')}</td></tr>`).join('');
-    const head = completa ? `<thead><tr>${cols.map(c => `<th>${esc(c.l)}</th>`).join('')}<th>Note</th></tr></thead>` : '';
-    if (completa) { ox = 0; oy = 0; }           // lo spostamento serve solo per il modulo prestampato
-    return `<div style="position:relative;left:${ox}mm;top:${oy}mm;${ultima ? '' : 'page-break-after:always;'}"><table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:right">Totale sfridi</td><td class="r">${fmtKg(tot)}</td><td></td></tr></tbody></table></div>`;
+    const X0 = 9.8 + ox - 10, Y0 = 66.4 + oy - 10;           // angolo in alto a sinistra della tabella, rispetto all'area di stampa
+    const kg = v => num(v) ? fmtKg(v) : '-';
+    const rowsHtml = Array.from({ length: 15 }, (_, i) => {
+      const r = pr[i]; if (!r) return `<tr>${'<td></td>'.repeat(12)}</tr>`;
+      const nota = CONS.note[p * 15 + i] || '';
+      return `<tr><td>${esc(r.n ?? '')}</td><td>${esc(isoToIt(r.data))}</td><td>${esc(r.fmt || '')}</td><td>${esc(r.tipo || '')}</td><td>${esc(r.lotto || '')}</td><td>${esc(r.forme ?? '')}</td><td>${esc(r.matr || '')}</td><td>${esc(meseAnno(r.mm))}</td><td>${fmtKg(r.iniz)}</td><td>${fmtKg(r.fin)}</td><td>${kg(r.sfridi)}</td><td>${nota ? esc(nota) : '-'}</td></tr>`;
+    }).join('');
+    const thead = `<thead><tr><th rowspan="2">N.</th><th rowspan="2">DATA</th><th colspan="2">LAVORAZIONE</th><th rowspan="2">LOTTO</th><th rowspan="2">NUMERO FORME</th><th rowspan="2">MATR.</th><th rowspan="2">MESE E ANNO</th><th>PESO</th><th>PESO</th><th rowspan="2">SFRIDI (KG)</th><th rowspan="2">NOTE</th></tr><tr><th>PESO</th><th>TIPO</th><th>INIZIALE (KG)</th><th>FINALE (KG)</th></tr></thead>`;
+    const unita = `<div class="ab" style="left:${248 - 10 + ox}mm;top:${21.5 - 10 + oy}mm;font-size:7.5pt;font-weight:bold;line-height:1.25">TRENTIN SPA<br>PEGOGNAGA (MN)</div>`;
+    const fisso = completa ? `
+      <div class="ab bx" style="left:${205 - 10 + ox}mm;top:${21.5 - 10 + oy}mm;width:83mm;height:11.5mm"></div><div class="ab" style="left:${208 - 10 + ox}mm;top:${25.8 - 10 + oy}mm;font-size:9pt">UNITÀ PRODUTTIVA:</div>
+      <div class="ab bx" style="left:${11.6 - 10 + ox}mm;top:${40.6 - 10 + oy}mm;width:276.4mm;height:24mm"></div>
+      <div class="ab" style="left:${72 - 10 + ox}mm;top:${43.5 - 10 + oy}mm;width:215mm;text-align:center;font-size:11pt;font-weight:bold">CONSORZIO PER LA TUTELA DEL FORMAGGIO GRANA PADANO</div>
+      <div class="ab" style="left:${72 - 10 + ox}mm;top:${53.5 - 10 + oy}mm;width:215mm;text-align:center;font-size:11pt">SCHEDA DI LAVORAZIONE DEL PORZIONATO GRANA PADANO</div>` : '';
+    return `${p === 0 || true ? CSS_SC : ''}<div class="sc" style="${ultima ? '' : 'page-break-after:always;'}">${fisso}${unita}
+      <table style="left:${X0}mm;top:${Y0}mm"><colgroup>${W_COL.map(w => `<col style="width:${w}">`).join('')}</colgroup>${thead}<tbody>${rowsHtml}
+      <tr class="tt"><td class="nb" colspan="8"></td><td colspan="2">TOTALE SFRIDI</td><td>${fmtKg(tot)}</td><td class="nb"></td></tr></tbody></table></div>`;
   };
   const stampa = (completa, tutte) => {
     const ox = parseNum($('cs-x').value) || 0, oy = parseNum($('cs-y').value) || 0;
-    DB.setImp('consorzio_offset', { v: { x: ox, y: oy } }).catch(() => { });
+    DB.setImp('consorzio_offset2', { v: { x: ox, y: oy } }).catch(() => { });
     const idx = tutte ? Array.from({ length: pagine() }, (_, i) => i) : [CONS.pag];
-    stampaHTML(completa ? 'Scheda consorzio' : '', completa ? 'TRENTIN SPA · PEGOGNAGA (MN)' : '', idx.map((p, k) => pagHtml(p, completa, ox, oy, k === idx.length - 1)).join(''), 'landscape');
+    stampaHTML('', '', idx.map((p, k) => pagHtml(p, completa, ox, oy, k === idx.length - 1)).join(''), 'landscape');
   };
   $('cs-st').onclick = () => righe.length && stampa(false, false); $('cs-stc').onclick = () => righe.length && stampa(true, false);
   $('cs-sta').onclick = () => righe.length && stampa(false, true); $('cs-stac').onclick = () => righe.length && stampa(true, true);
