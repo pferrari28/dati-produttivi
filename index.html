@@ -1194,7 +1194,7 @@ function eventiFoglio(box) {
   box.addEventListener('input', e => {                               // completamento automatico in stile Excel: propone il valore già scritto che inizia con le lettere digitate
     const inp = e.target; if (inp.tagName !== 'INPUT' || /^deleteContent/.test(e.inputType || '')) return;
     const td = inp.closest('td'); if (!td) return; const k = td.dataset.f, c = colsGiorno(CUR.tipo).find(x => x.k === k);
-    if (!c || !['cod', 'matr', 'fmt', 'linea', 'lotto'].includes(c.t)) return;
+    if (!c || !['cod', 'matr', 'fmt', 'linea'].includes(c.t)) return;
     const v = inp.value; if (!v || inp.selectionStart !== v.length) return;
     const cand = new Set(); CUR.righe.forEach(r => { const x = c.t === 'cod' ? calcRiga(CUR.tipo, r, CUR.data).codice : r[k]; if (x) cand.add(String(x)); });
     if (c.t === 'cod') Object.values(CODICI[S.prod]).forEach(x => x && cand.add(String(x)));
