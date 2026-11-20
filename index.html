@@ -1813,7 +1813,7 @@ async function pgConsorzio() {
       return `<tr><td>${esc(r.n ?? '')}</td><td>${esc(isoToIt(r.data))}</td><td>${esc(r.fmt || '')}</td><td>${esc(r.tipo || '')}</td><td>${esc(r.lotto || '')}</td><td>${esc(r.forme ?? '')}</td><td>${esc(r.matr || '')}</td><td>${esc(meseAnno(r.mm))}</td><td>${fmtKg(r.iniz)}</td><td>${fmtKg(r.fin)}</td><td>${kg(r.sfridi)}</td><td>${nota ? esc(nota) : '-'}</td></tr>`;
     }).join('');
     const thead = `<thead><tr><th rowspan="2">N.</th><th rowspan="2">DATA</th><th colspan="2">LAVORAZIONE</th><th rowspan="2">LOTTO</th><th rowspan="2">NUMERO FORME</th><th rowspan="2">MATR.</th><th rowspan="2">MESE E ANNO</th><th>PESO</th><th>PESO</th><th rowspan="2">SFRIDI (KG)</th><th rowspan="2">NOTE</th></tr><tr><th>PESO</th><th>TIPO</th><th>INIZIALE (KG)</th><th>FINALE (KG)</th></tr></thead>`;
-    const unita = `<div class="ab" style="left:${238 - 10 + ox}mm;top:${24.5 - 10 + oy}mm;font-size:10pt;font-weight:bold;line-height:1.25">TRENTIN SPA<br>PEGOGNAGA (MN)</div>`;
+    const unita = `<div class="ab" style="left:${258 - 10 + ox}mm;top:${24.5 - 10 + oy}mm;font-size:10pt;font-weight:bold;line-height:1.25">TRENTIN SPA<br>PEGOGNAGA (MN)</div>`;
     const fisso = completa ? `
       <div class="ab bx" style="left:${205 - 10 + ox}mm;top:${21.5 - 10 + oy}mm;width:83mm;height:11.5mm"></div><div class="ab" style="left:${208 - 10 + ox}mm;top:${25.8 - 10 + oy}mm;font-size:9pt">UNITÀ PRODUTTIVA:</div>
       <div class="ab bx" style="left:${11.6 - 10 + ox}mm;top:${40.6 - 10 + oy}mm;width:276.4mm;height:24mm"></div>
