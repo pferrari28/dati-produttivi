@@ -1506,7 +1506,7 @@ async function pgElenco(tipo, mantieni) {
   ELENCO.tipo = tipo; ELENCO.mk = mk; ELENCO.mappa = new Map([...mappa].map(([d, g]) => [d, { ...g, dati: g.dati.map(r => ({ ...r })) }]));   // copia di lavoro: le modifiche non toccano la cache finché non si salva
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, ELENCO.mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['forme'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
+  TAB_ELENCO = Tabella(box, { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['forme', 'fmt', 'polpa', 'linea'] : ['lotto', 'matr', 'mese', 'anno', 'forme', 'sporco'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
   aggiornaBarraElenco();
   $('el-canc').onclick = () => { Object.keys(TAB_ELENCO.filtri).forEach(k => delete TAB_ELENCO.filtri[k]); TAB_ELENCO.disegna(); };
   $('el-salva-b').onclick = salvaElenco;
