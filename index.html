@@ -1303,6 +1303,23 @@ function eventiFoglio(box) {
     else if (k === 'Enter') { e.preventDefault(); muovi(1, 0); }
     else if (k === 'ArrowRight' && (inp.selectionStart === inp.value.length || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, 1); }
     else if (k === 'ArrowLeft' && (inp.selectionEnd === 0 || inp.selectionStart === 0 && inp.selectionEnd === inp.value.length)) { e.preventDefault(); muovi(0, -1); }
+    else if (k === 'Tab' && CUR.tipo === 'lavorazioni' && !e.ctrlKey && !e.altKey) {   // Tab: lotto → forme → formato → linea → lotto della riga sotto (Maiusc+Tab al contrario)
+      const ord = ['lotto', 'forme', 'fmt', 'linea'], f = td.dataset.f, p = ord.indexOf(f);
+      if (p >= 0) {
+        e.preventDefault();
+        const cols = colsGiorno(CUR.tipo), ci2 = fk => cols.findIndex(x => x.k === fk);
+        let ni = i, nf;
+        if (!e.shiftKey) { if (p < 3) nf = ord[p + 1]; else { nf = 'lotto'; ni = i + 1; } }
+        else { if (p > 0) nf = ord[p - 1]; else { nf = 'linea'; ni = i - 1; } }
+        if (ni < 0) return;
+        commitCella(inp);
+        if (ni >= CUR.righe.length) { CUR.righe.push(TIPI[CUR.tipo].vuota()); disegnaFoglio(); }
+        const vis = n => { const t = document.querySelector(`#foglio-t td[data-i="${n}"][data-c="${ci2('lotto')}"]`); return t && t.parentElement.style.display !== 'none'; };
+        while (ni >= 0 && ni < CUR.righe.length && !vis(ni)) ni += e.shiftKey ? -1 : 1;     // salta righe nascoste dal filtro
+        const t2 = document.querySelector(`#foglio-t td[data-i="${ni}"][data-c="${ci2(nf)}"]`), in2 = t2 && t2.querySelector('input');
+        if (in2) in2.focus();
+      }
+    }
     else if (k === 'Home') { e.preventDefault(); const primo = [...td.parentElement.querySelectorAll('td')].map(t => t.querySelector('input')).find(x => x); if (primo && primo !== inp) primo.focus(); }   // Home: torna alla prima cella della riga
     else if (k === 'Escape') { const r = CUR.righe[i], kk = td.dataset.f; inp.value = mostra(td.dataset.t || '', r[kk]); inp.blur(); }
   });
