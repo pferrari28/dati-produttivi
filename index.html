@@ -353,7 +353,7 @@ const PRODOTTI = { PR: 'Parmigiano Reggiano', GP: 'Grana Padano' };
 
 // ---------- formati ----------
 const fmtKg = n => (n == null || n === '' || isNaN(n)) ? '' : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
-const fmtKg0 = n => (n == null || n === '' || isNaN(n)) ? '' : Number(n).toLocaleString('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' });
+const fmtKg0 = n => (n == null || n === '' || isNaN(n)) ? '' : Number.isInteger(+n) ? Number(n).toLocaleString('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' }) : Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
 const isoOggi = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const isoToIt = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
 const meseKey = iso => iso.slice(0, 7);
@@ -965,10 +965,14 @@ function colsGiorno(tipo) {
 }
 const calcRiga = (tipo, r, data) => tipo === 'lavaggi' ? calcLavaggio(S.prod, r) : calcLavorazione(S.prod, data, r);
 
+// tipologia nei lavaggi: una lettera compila il testo completo
+const TIPOLOGIE = () => S.prod === 'GP' ? { M: 'MEZZANO', R: 'RETINATO', B: 'GRAN BON' } : { M: 'MEZZANO', R: 'RETINATO', B: 'BIOLOGICO', S: 'SBIANCATO' };
+
 // ---- valore mostrato nelle celle ----
 function mostra(t, v, r, k) {
   if (v == null || v === '' || (typeof v === 'number' && isNaN(v))) return '';
   if (t === 'kg' || t === 'ov' || t === 'kgf') return fmtKg(v);
+  if (t === 'int' && typeof v === 'number' && !Number.isInteger(v)) return fmtKg(v).replace(/\./g, '');      // forme con decimali: sempre con la virgola (34,50)
   return String(v);
 }
 function norm(t, raw, riga, k) {                       // → {v} oppure {err}
@@ -984,7 +988,7 @@ function norm(t, raw, riga, k) {                       // → {v} oppure {err}
       if (!s) return { v: '' }; let a = parseInt(s, 10); if (a < 100) a += 2000;
       return a >= 2000 && a <= 2100 ? { v: a } : { err: 'Anno non valido' };
     }
-    case 'int': { if (!s) return { v: '' }; const n = parseNum(s); return n != null && !isNaN(n) && n >= 0 && Math.round(n) === n ? { v: n, fx: /^=|\+/.test(s) ? s.replace(/^=/, '') : '' } : { err: 'Numero intero (puoi scrivere anche somme: 12+24)' }; }
+    case 'int': { if (!s) return { v: '' }; const n = parseNum(s), dec = CUR.tipo === 'lavorazioni' && k === 'forme'; return n != null && !isNaN(n) && n >= 0 && (dec || Math.round(n) === n) ? { v: n, fx: /^=|\+/.test(s) ? s.replace(/^=/, '') : '' } : { err: 'Numero intero (puoi scrivere anche somme: 12+24)' }; }
     case 'kg': case 'ov': case 'kgf': {
       if (!s) return { v: '' }; const n = parseNum(s); if (n == null || isNaN(n)) return { err: 'Numero non valido (somme: =100+50)' };
       const fx = /^=|\+/.test(s) ? s : ''; return { v: n, fx };
@@ -1153,6 +1157,7 @@ function aggiornaRiga(i) {                              // ricalcola celle calco
   [...tr.children].forEach((td, j) => {
     const nu = nt.children[j]; if (!nu) return;
     const inp = td.querySelector('input'), ni = nu.querySelector('input');
+    if ((td.dataset.msg || '') !== (nu.dataset.msg || '')) nascondiTip();      // il messaggio non deve restare dopo aver corretto la cella
     td.className = nu.className; ['msg', 'lv', 'v'].forEach(a => { if (nu.dataset[a] != null) td.dataset[a] = nu.dataset[a]; else delete td.dataset[a]; });
     if (inp && ni) { if (inp !== att && inp !== FOCUS_NEXT && inp.value !== ni.value) inp.value = ni.value; }
     else if (!inp) td.innerHTML = nu.innerHTML;
@@ -1226,6 +1231,7 @@ function commitCella(inp) {
   delete inp.dataset.orig;
   const prima = JSON.stringify(r);
   let raw = inp.value;
+  if (tipo === 'lavaggi' && c.t === 'cod') { const tp = TIPOLOGIE()[raw.trim().toUpperCase()]; if (tp) raw = tp; }
   if (/^\+/.test(raw.trim()) && (c.t === 'int' || c.t === 'kg') && !vuoto(r[k])) raw = ((r.fx && r.fx[k]) ? r.fx[k] : String(r[k])) + raw.trim();      // «+8» aggiunge al valore già presente (5 → 5+8)
   let n = norm(c.t, raw, r, k);
   if (n.err) { toast(n.err, true); inp.value = mostra(c.t, r[k]); return; }
@@ -1276,6 +1282,7 @@ function eventiFoglio(box) {
     const td = inp.closest('td'); if (!td) return; const k = td.dataset.f, c = colsGiorno(CUR.tipo).find(x => x.k === k);
     if (!c || !['cod', 'matr', 'fmt', 'linea'].includes(c.t)) return;
     const v = inp.value; if (!v || inp.selectionStart !== v.length) return;
+    if (CUR.tipo === 'lavaggi' && c.t === 'cod') { const tp = TIPOLOGIE()[v.trim().toUpperCase()]; if (tp) { inp.value = tp; inp.setSelectionRange(1, tp.length); return; } }
     const cand = new Set(); CUR.righe.forEach(r => { const x = c.t === 'cod' ? calcRiga(CUR.tipo, r, CUR.data).codice : r[k]; if (x) cand.add(String(x)); });
     if (c.t === 'cod') Object.values(CODICI[S.prod]).forEach(x => x && cand.add(String(x)));
     if (c.t === 'matr') Object.keys(CODICI[S.prod]).forEach(x => cand.add(normMatr(x)));
