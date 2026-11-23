@@ -305,6 +305,17 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 .sheet td.hasfx::after{content:'';position:absolute;top:0;right:0;border-style:solid;border-width:0 9px 9px 0;border-color:transparent #1F6FEB transparent transparent;pointer-events:none;}
 /* stampa polpa: titolo rosso Calibri 15 pt */
 #print-area.titolo-rosso h2{color:#FF0000 !important;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif !important;font-size:15pt !important;}
+
+/* fumetto delle somme sopra la cella */
+#fx-pop{position:fixed;z-index:9000;display:none;background:#fff;border:2px solid #1F6FEB;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:8px 12px;max-width:340px;min-width:150px;pointer-events:none;font-size:14px;}
+#fx-pop::after{content:'';position:absolute;left:var(--fx-freccia,50%);bottom:-9px;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:#1F6FEB;}
+#fx-pop.sotto::after{bottom:auto;top:-9px;border-top:0;border-bottom:8px solid #1F6FEB;}
+#fx-pop .fxp-t{font-size:11px;color:#6b7785;text-transform:uppercase;letter-spacing:.04em;}
+#fx-pop .fxp-n{font-weight:700;font-size:17px;word-break:break-all;margin:2px 0;}
+#fx-pop .fxp-n i{font-style:normal;color:#1F6FEB;margin:0 3px;}
+#fx-pop .fxp-s{font-weight:700;color:#1b7a3a;}
+#fx-pop .fxp-h{font-size:11px;color:#6b7785;margin-top:3px;}
+@media print{#fx-pop{display:none !important;}}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -1265,6 +1276,26 @@ function commitCella(inp) {
   aggiornaTutteRighe();
 }
 
+// ---- fumetto sopra la cella con somma: mostra i numeri inseriti (5+8+6) e si aggiorna mentre scrivi, così è facile aggiungere +N in fondo ----
+let FXPOP = null;
+function mostraFxPop(inp, attivo) {
+  if (!attivo) return nascondiFxPop();
+  if (!FXPOP) { FXPOP = document.createElement('div'); FXPOP.id = 'fx-pop'; document.body.appendChild(FXPOP); }
+  FXPOP._inp = inp; FXPOP.style.display = 'block'; aggiornaFxPop(inp);
+}
+function aggiornaFxPop(inp) {
+  if (!FXPOP || FXPOP.style.display === 'none' || FXPOP._inp !== inp) return;
+  const t = inp.value, parti = t.split('+').map(x => x.trim()).filter(x => x !== ''), nums = parti.map(x => parseNum(x)), ok = nums.length && nums.every(n => n != null && !isNaN(n));
+  const tot = ok ? nums.reduce((a, b) => a + b, 0) : null;
+  FXPOP.innerHTML = `<div class="fxp-t">Numeri inseriti</div><div class="fxp-n">${parti.map(esc).join('<i>+</i>')}${/\+\s*$/.test(t) ? '<i>+</i>' : ''}</div>${tot != null ? `<div class="fxp-s">= ${esc(fmtKg0(tot))}</div>` : ''}<div class="fxp-h">Scrivi +N in fondo per aggiungere</div>`;
+  const rc = inp.closest('td').getBoundingClientRect(), pw = FXPOP.offsetWidth, ph = FXPOP.offsetHeight;
+  let left = Math.min(Math.max(8, rc.left + rc.width / 2 - pw / 2), window.innerWidth - pw - 8), top = rc.top - ph - 8;
+  FXPOP.classList.toggle('sotto', top < 4); if (top < 4) top = rc.bottom + 8;
+  FXPOP.style.left = left + 'px'; FXPOP.style.top = top + 'px'; FXPOP.style.setProperty('--fx-freccia', Math.round(rc.left + rc.width / 2 - left) + 'px');
+}
+function nascondiFxPop() { if (FXPOP) FXPOP.style.display = 'none'; }
+window.addEventListener('scroll', () => { if (FXPOP && FXPOP.style.display !== 'none' && FXPOP._inp) aggiornaFxPop(FXPOP._inp); }, true);
+
 // ---- eventi del foglio ----
 function eventiFoglio(box) {
   box.addEventListener('focusin', e => {
@@ -1278,8 +1309,9 @@ function eventiFoglio(box) {
     if (r && r.fx && r.fx[k]) setTimeout(() => inp.setSelectionRange(inp.value.length, inp.value.length), 0);      // cella con somma: cursore in fondo, si può aggiungere +N
     else setTimeout(() => inp.select(), 0);
     chiudiSelezioneFoglio();
+    mostraFxPop(inp, !!(r && r.fx && r.fx[k]));
   });
-  box.addEventListener('input', e => {                               // completamento automatico in stile Excel: propone il valore già scritto che inizia con le lettere digitate
+  box.addEventListener('input', e => { if (e.target.tagName === 'INPUT') aggiornaFxPop(e.target);                               // completamento automatico in stile Excel: propone il valore già scritto che inizia con le lettere digitate
     const inp = e.target; if (inp.tagName !== 'INPUT' || /^deleteContent/.test(e.inputType || '')) return;
     const td = inp.closest('td'); if (!td) return; const k = td.dataset.f, c = colsGiorno(CUR.tipo).find(x => x.k === k);
     if (!c || !['cod', 'matr', 'fmt', 'linea'].includes(c.t)) return;
@@ -1291,7 +1323,7 @@ function eventiFoglio(box) {
     const q = v.toUpperCase().replace(/\s+/g, ''), tr = [...cand].find(x => x.toUpperCase().startsWith(q) && x.length > q.length);
     if (tr) { inp.value = v + tr.slice(q.length); inp.setSelectionRange(v.length, inp.value.length); }
   });
-  box.addEventListener('focusout', e => { if (e.target.tagName === 'INPUT') { FOCUS_NEXT = e.relatedTarget; commitCella(e.target); FOCUS_NEXT = null; } });
+  box.addEventListener('focusout', e => { if (e.target.tagName === 'INPUT') { nascondiFxPop(); FOCUS_NEXT = e.relatedTarget; commitCella(e.target); FOCUS_NEXT = null; } });
   box.addEventListener('keydown', e => {
     const inp = e.target; if (inp.tagName !== 'INPUT') { if (e.key === 'Escape') chiudiSelezioneFoglio(); return; }
     const td = inp.closest('td'), i = +td.dataset.i, ci = +td.dataset.c, k = e.key;
@@ -1322,7 +1354,7 @@ function eventiFoglio(box) {
         if (!e.shiftKey) { if (p < 3) nf = ord[p + 1]; else { nf = 'lotto'; ni = i + 1; } }
         else { if (p > 0) nf = ord[p - 1]; else { nf = 'linea'; ni = i - 1; } }
         if (ni < 0) return;
-        commitCella(inp);
+        commitCella(inp); inp.dataset.orig = inp.value;                 // evita il secondo salvataggio all'uscita dalla cella (cancellerebbe la somma)
         if (ni >= CUR.righe.length) { CUR.righe.push(TIPI[CUR.tipo].vuota()); disegnaFoglio(); }
         const vis = n => { const t = document.querySelector(`#foglio-t td[data-i="${n}"][data-c="${ci2('lotto')}"]`); return t && t.parentElement.style.display !== 'none'; };
         while (ni >= 0 && ni < CUR.righe.length && !vis(ni)) ni += e.shiftKey ? -1 : 1;     // salta righe nascoste dal filtro
