@@ -2091,7 +2091,7 @@ function xlLavorazioni(T, nome) {
   const spec = [
     { l: g('NUM RIGA', 'N. RIGA'), w: g(8.1, 8.7), hf: g(Y, V), df: g(Y, V), db: 1, al: 'center', f: 1, v: r => numOrTxt(r.n) },
     { l: 'DATA', w: 11.7, hf: Y, al: 'center', f: FMT_X.data, v: r => serData(r.data) },
-    { l: 'LOTTO', w: g(10, 9), hf: Y, al: 'left', v: r => gp ? numOrTxt(r.lotto || '') : (r.lotto || '') },      // padano: i lotti senza P (es. 26106) sono numeri, formato generale
+    { l: 'LOTTO', w: g(10, 9), hf: Y, al: 'left', f: 1, v: r => numOrTxt(r.lotto || '') },      // padano: i lotti senza P (es. 26106) sono numeri, formato generale
     { l: 'MATRICOLA', w: g(12, 11.4), al: 'left', v: r => numOrTxt(r.matr) },
     { l: 'MESE/ANNO', w: g(12.6, 12.4), al: 'left', f: FMT_X.mmmyy, v: r => serMese(r.mese, r.anno) },
     { l: 'N. FORME INGRESSO', w: g(10.3, 13), hf: Y, f: FMT_X.int, v: r => nv(r.forme), tot: 'forme' },
@@ -2185,7 +2185,7 @@ function xlLavaggi(T, nome) {
     { l: 'Data', w: 12, f: 'dd/mm/yyyy', al: 'center', v: r => r.data ? serData(r.data) : '' },
     { l: 'Matricola', w: 12, al: 'center', v: r => numOrTxt(S.prod === 'GP' ? String(r.matr ?? '').replace(/\s+/g, '') : r.matr) },   // padano: senza spazi (BS634), come vuole il vecchio file
     { l: 'Mese/anno', w: 12, al: 'center', v: r => (+r.mese >= 1 && +r.mese <= 12 && r.anno) ? MESI_BREVI[+r.mese - 1] + '-' + String(r.anno).slice(-2) : '' },
-    { l: 'Lotto', w: 12, al: 'center', v: r => r.lotto || '' },
+    { l: 'Lotto', w: 12, al: 'center', f: 1, v: r => numOrTxt(r.lotto || '') },
     { l: 'Forme', w: 10, al: 'center', f: 1, v: r => nv(r.forme) },
     { l: 'Pallet sporco', w: 14, al: 'center', f: FMT_X.kg2, v: r => nv(r.sporco) },
     { l: 'Tipologia', w: 16, al: 'center', v: r => r.tipo || '' },
