@@ -2125,10 +2125,10 @@ function xlLavorazioni(T, nome) {
 
 // ---- POLPA ----
 function xlPolpa(T, nome) {
-  const gp = S.prod === 'GP', Y = GIALLO;
+  const gp = S.prod === 'GP', Y = GIALLO, R = gp ? VERDE : GIALLO;
   const kg = r => gp ? (r.polpa == null && !num(r.q) ? '' : nv(r.ab)) : nv(r.polpa);
   const spec = [
-    { l: 'NUM RIGA', w: 10.7, hf: Y, df: Y, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
+    { l: 'NUM RIGA', w: 10.7, hf: R, df: R, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
     { l: 'LOTTO', w: 13.7, db: 1, al: 'center', v: r => r.lotto || '' },
     { l: 'DATA', w: 15.7, al: 'center', f: FMT_X.data, v: r => serData(r.data) },
     { l: 'MATRICOLA', w: 20.3, al: 'center', v: r => numOrTxt(r.matr) },
@@ -2137,7 +2137,7 @@ function xlPolpa(T, nome) {
     { l: 'FORMATO', w: 18.7, al: 'center', v: r => r.fmt || '' },
     { l: 'LINEA', w: 25.7, db: 1, al: 'center', v: r => r.linea || '' },
     { l: 'KG POLPA', w: 81.7, al: 'center', f: FMT_X.kg2, v: kg, tot: 'polpa' },
-    { l: 'NUM RIGA', w: 10.7, hf: Y, df: Y, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
+    { l: 'NUM RIGA', w: 10.7, hf: R, df: R, db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
   ];
   const somma = T.vis.reduce((a, r) => a + (+kg(r) || 0), 0);
   const f = foglioElenco('POLPA', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, T.vis, { polpa: somma }, { sz: 15, hH: 39.95, rH: 39.95, titH: 21, titFill: Y, etTot: 7 });
