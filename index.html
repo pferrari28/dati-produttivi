@@ -2035,7 +2035,7 @@ async function pgConsorzio() {
 }
 // ===== Esportazioni Excel nel formato dei file originali (colori, larghezze, formati, orientamento) =====
 const FMT_X = { data: 14, n0: 1, text: 49, mmmyy: '[$-410]mmm\\-yy;@', mmmmyy: '[$-410]mmmm\\-yy;@', kg2: '_-* #,##0.00_-;\\-* #,##0.00_-;_-* "-"??_-;_-@_-', int: '_-* #,##0_-;\\-* #,##0_-;_-* "-"??_-;_-@_-' };
-const GIALLO = 'FFFF00', VERDE = '66FF66';
+const GIALLO = 'FFFF00', VERDE = 'E2EFDA';
 const serData = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 86400000) + 25569; };
 const serMese = (m, a) => { if (typeof a === 'undefined' && typeof m === 'string' && m.includes('/')) { [m, a] = m.split('/'); } return (+m && +a) ? serData(`${a}-${String(m).padStart(2, '0')}-01`) : ''; };
 const numOrTxt = v => v == null || v === '' ? '' : (/^\d+$/.test(String(v)) ? +v : String(v));
