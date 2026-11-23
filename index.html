@@ -1011,9 +1011,10 @@ function controlli(tipo, i) {
   });
   // stesso lotto con dati diversi nella giornata
   const comb = x => normMatr(x.matr) + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
-  if (r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
+  const completa = tipo !== 'lavaggi' || (!vuoto(r.lotto) && (facolt || (!vuoto(r.matr) && !vuoto(r.mese) && !vuoto(r.anno))) && !vuoto(r.forme) && !vuoto(r.sporco));   // nei lavaggi il confronto con registro/altre righe parte solo a riga completa
+  if (completa && r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
     E('matr', 'Lo stesso lotto ha matricola o mese/anno diversi in un\'altra riga');
-  if (reg) {                                         // lotto già nel Registro lotti: se matricola o produzione sono diverse, celle in rosso
+  if (reg && completa) {                             // lotto già nel Registro lotti: se matricola o produzione sono diverse, celle in rosso
     const msg = `Diverso dal Registro lotti (${reg.matr} ${reg.mese ?? '?'}/${reg.anno ?? '?'})`;
     if (!vuoto(r.matr) && reg.matr && normMatr(r.matr) !== normMatr(reg.matr)) E('matr', msg);
     if (!vuoto(r.mese) && reg.mese != null && +r.mese !== +reg.mese) E('mese', msg);
