@@ -2086,8 +2086,8 @@ function xlsxFormato(fogli) {
 // Costruisce un foglio "elenco" dagli spec colonna: { l, w, hf (colore titolo), df (colore dati), db (grassetto dati), al, f (formato), v: r => valore, tot: chiave del totale }
 function foglioElenco(nome, titolo, spec, righe, totali, opz) {
   const sz = opz.sz || 11, hH = opz.hH, rH = opz.rH, bd = true;
-  const hs = c => ({ b: 1, sz, al: 'center', va: 'center', wrap: 1, bd, fill: c.hf });
-  const out = [[{ v: titolo, s: { b: 1, sz, fill: opz.titFill } }], spec.map(c => ({ v: c.l, s: hs(c) }))];
+  const hs = c => ({ b: 1, sz, al: 'center', va: 'center', wrap: 1, bd, fill: c.hf, color: c.fc });
+  const out = [[{ v: titolo, s: { b: 1, sz, fill: opz.titFill, color: opz.titRosso ? 'FF0000' : undefined } }], spec.map(c => ({ v: c.l, s: hs(c) }))];
   righe.forEach(r => out.push(spec.map(c => ({ v: c.v(r), s: { f: c.f, sz, al: c.al, va: 'center', bd, b: c.db, fill: c.df, color: c.fc } }))));
   if (totali) out.push(spec.map((c, i) => ({ v: c.tot ? nv(totali[c.tot]) : (i === opz.etTot ? 'TOTALE' : ''), s: { f: c.tot ? c.f : 0, sz, b: 1, al: c.tot ? undefined : 'center', va: 'center', bd } })));
   const rowH = { 0: opz.titH || 20, 1: hH }; if (rH) for (let i = 2; i < out.length; i++) rowH[i] = rH;
@@ -2121,7 +2121,7 @@ function xlLavorazioni(T, nome) {
   ];
   const righe = T.vis.map(r => ({ ...r, data: r.data || (typeof CUR !== 'undefined' && CUR.data) }));
   const tot = T.cols.some(c => c.tot) ? T.totali(T.vis) : null;
-  const f = foglioElenco('LAVORAZIONI', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, righe, tot, { sz: 11, hH: g(55.5, 75.75), titFill: g(Y, undefined), etTot: 2, margins: g([0.7, 0.7, 0.75, 0.75], [0.25, 0.25, 0.75, 0.75]) });
+  const f = foglioElenco('LAVORAZIONI', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, righe, tot, { sz: 11, hH: g(55.5, 75.75), titRosso: 1, titFill: g(Y, undefined), etTot: 2, margins: g([0.7, 0.7, 0.75, 0.75], [0.25, 0.25, 0.75, 0.75]) });
   scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
 }
 
@@ -2142,7 +2142,7 @@ function xlPolpa(T, nome) {
     { l: 'NUM RIGA', w: 10.7, hf: R, df: R, fc: 'FF0000', db: 1, al: 'center', f: 0, v: r => numOrTxt(r.n) },
   ];
   const somma = T.vis.reduce((a, r) => a + (+kg(r) || 0), 0);
-  const f = foglioElenco('POLPA', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, T.vis, { polpa: somma }, { sz: 15, hH: 39.95, rH: 39.95, titH: 21, titFill: R, etTot: 7 });
+  const f = foglioElenco('POLPA', 'DATI LAVORAZIONE ' + (gp ? 'GRANA PADANO' : 'PARMIGIANO REGGIANO'), spec, T.vis, { polpa: somma }, { sz: 15, hH: 39.95, rH: 39.95, titH: 21, titRosso: 1, titFill: R, etTot: 7 });
   scarica(xlsxFormato([f]), nome + '.xlsx'); return true;
 }
 
