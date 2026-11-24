@@ -317,6 +317,12 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #fx-pop .fxp-h{font-size:11px;color:#6b7785;margin-top:3px;}
 @media print{#fx-pop{display:none !important;}}
 .mesenav button.on{background:#1F2A37;color:#fff;border-color:#1F2A37;}
+/* tasti vai in fondo / torna in alto */
+.nav-sg{position:fixed;z-index:800;border:1px solid var(--line);background:var(--panel);color:#1F2A37;font:inherit;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:16px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12);}
+.nav-sg[hidden]{display:none;}
+.nav-sg:hover{background:#1F2A37;color:#fff;}
+.nav-sg.spento{opacity:.45;}
+@media print{.nav-sg{display:none !important;}}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -1698,6 +1704,28 @@ async function pgPeriodo(tipo) {
     if (x === 'stampa') stampaTabella(T, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, sub, 'landscape'); else esportaTabella(T, `${TIPI[tipo].nome}_${S.prod}_${i.da}_${i.a}`, TIPI[tipo].nome); };
   await carica();
 }
+
+// ---- tasti «vai in fondo» (in alto a destra) e «torna in alto» (sotto la tabella, a destra) per le tabelle lunghe di lavaggi e lavorazioni ----
+(function () {
+  const mk = (id, txt, tit) => { const b = document.createElement('button'); b.type = 'button'; b.id = id; b.className = 'nav-sg'; b.hidden = true; b.title = tit; b.textContent = txt; document.body.appendChild(b); b.addEventListener('mousedown', e => e.preventDefault()); return b; };
+  const giu = mk('nav-giu', '▼ Vai in fondo', 'Vai in fondo alla tabella'), su = mk('nav-su', '▲ Torna in alto', 'Torna all\'inizio della tabella');
+  const wrap = () => { const m = document.getElementById('main'); return m ? (m.querySelector('#foglio .sheet-wrap') || m.querySelector('#elenco-corpo .sheet-wrap')) : null; };
+  let rq = 0;
+  const agg = () => {
+    rq = 0; const w = wrap(), m = document.getElementById('main');
+    if (!w || !w.offsetParent || w.scrollHeight - w.clientHeight < 40) { giu.hidden = su.hidden = true; return; }
+    const rm = m.getBoundingClientRect(), rw = w.getBoundingClientRect(), tabs = m.querySelector('.subtabs'), rt = tabs ? tabs.getBoundingClientRect() : rm;
+    giu.hidden = su.hidden = false;
+    giu.style.right = Math.max(8, innerWidth - rm.right + 14) + 'px'; giu.style.top = Math.round(rt.top + (rt.height - giu.offsetHeight) / 2) + 'px';
+    su.style.right = Math.max(8, innerWidth - rm.right + 14) + 'px'; su.style.top = Math.min(innerHeight - su.offsetHeight - 6, Math.round(rw.bottom + 22)) + 'px';
+    giu.classList.toggle('spento', w.scrollHeight - w.scrollTop - w.clientHeight < 8); su.classList.toggle('spento', w.scrollTop < 8);
+  };
+  const pianifica = () => { if (!rq) rq = requestAnimationFrame(agg); };
+  document.addEventListener('scroll', pianifica, true); window.addEventListener('resize', pianifica);
+  new MutationObserver(pianifica).observe(document.getElementById('main'), { childList: true, subtree: true });
+  giu.onclick = () => { const w = wrap(); if (w) w.scrollTo({ top: w.scrollHeight, behavior: 'smooth' }); };
+  su.onclick = () => { const w = wrap(); if (w) w.scrollTo({ top: 0, behavior: 'smooth' }); };
+})();
 // ====== Pagine di consultazione: Polpa, Prelievo magazzino, Totale lavaggi · Codici, Parametri, Backup ======
 const input = (id, v, extra) => `<input id="${id}" value="${esc(v ?? '')}" ${extra || ''}>`;
 async function mesiIntervallo(tab, da, a) {                       // carica tutti i mesi tra due date e unisce le giornate
