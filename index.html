@@ -316,6 +316,7 @@ table{border-collapse:collapse;font-size:1rem;font-variant-numeric:tabular-nums;
 #fx-pop .fxp-s{font-weight:700;color:#1b7a3a;}
 #fx-pop .fxp-h{font-size:11px;color:#6b7785;margin-top:3px;}
 @media print{#fx-pop{display:none !important;}}
+.mesenav button.on{background:#1F2A37;color:#fff;border-color:#1F2A37;}
 </style></head>
 <body>
 <script src="vendor/supabase.js"></script>
@@ -1028,8 +1029,8 @@ function controlli(tipo, i) {
   });
   // stesso lotto con dati diversi nella giornata
   const comb = x => normMatr(x.matr) + '|' + (x.mese ?? '') + '|' + (x.anno ?? '');
-  const completa = tipo !== 'lavaggi' || (!vuoto(r.lotto) && (facolt || (!vuoto(r.matr) && !vuoto(r.mese) && !vuoto(r.anno))) && !vuoto(r.forme) && !vuoto(r.sporco));   // nei lavaggi il confronto con registro/altre righe parte solo a riga completa
-  if (completa && r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
+  const compl = x => tipo !== 'lavaggi' || (!vuoto(x.lotto) && (senzaMatr(S.prod, x) || (!vuoto(x.matr) && !vuoto(x.mese) && !vuoto(x.anno))) && !vuoto(x.forme) && !vuoto(x.sporco)), completa = compl(r);   // nei lavaggi il confronto con registro/altre righe parte solo a riga completa (anche l'altra riga deve essere completa)
+  if (completa && r.lotto && CUR.righe.some((x, j) => j !== i && x.lotto === r.lotto && compl(x) && !vuoto(x.matr) && !vuoto(r.matr) && comb(x) !== comb(r)))
     E('matr', 'Lo stesso lotto ha matricola o mese/anno diversi in un\'altra riga');
   if (reg && completa) {                             // lotto già nel Registro lotti: se matricola o produzione sono diverse, celle in rosso
     const msg = `Diverso dal Registro lotti (${reg.matr} ${reg.mese ?? '?'}/${reg.anno ?? '?'})`;
@@ -1767,19 +1768,41 @@ async function datiFormeGiorno(anno) {
   if (DEMO) { const o = demoGet('dp_lavaggi') || {}, out = []; Object.entries(o).filter(([k]) => k.startsWith(S.prod + '|' + anno)).forEach(([k, v]) => out.push({ data: k.split('|')[1], lavaggi: (v.dati || []).reduce((s, r) => s + num(r.forme), 0), altre: v.altre || 0 })); return out; }
   const r = ok(await sb.rpc('dp_forme_giorno', { p_prodotto: S.prod, p_da: da, p_a: a })); return r.data;
 }
+let VISTA_TOT = 'tutte';                                                  // 'tutte' = lavaggi + Carpi/Cerea; 'altre' = solo Carpi/Cerea
 async function pgTotaleLavaggi() {
-  const main = $('main'); main.innerHTML = `<div class="page-title"><h2>Totale lavaggi · ${PRODOTTI[S.prod]}</h2></div><div id="tot-corpo"><div class="empty">Carico…</div></div>`;
-  const dati = await datiFormeGiorno(ANNO_TOT), m = {};
-  dati.forEach(x => { const mm = +x.data.slice(5, 7), gg = +x.data.slice(8, 10); (m[mm] = m[mm] || {})[gg] = +x.lavaggi + +x.altre; });
+  const main = $('main'), altroNome = S.prod === 'PR' ? 'Carpi' : 'Cerea'; main.innerHTML = `<div class="page-title"><h2>Totale lavaggi · ${PRODOTTI[S.prod]}</h2></div><div id="tot-corpo"><div class="empty">Carico…</div></div>`;
+  const dati = await datiFormeGiorno(ANNO_TOT), m = {}, ma = {};
+  dati.forEach(x => { const mm = +x.data.slice(5, 7), gg = +x.data.slice(8, 10); (m[mm] = m[mm] || {})[gg] = +x.lavaggi + +x.altre; if (+x.altre) (ma[mm] = ma[mm] || {})[gg] = +x.altre; });
+  const solo = VISTA_TOT === 'altre', src = solo ? ma : m;
   const altreAnno = dati.reduce((a, x) => a + (+x.altre || 0), 0);              // forme lavate per Carpi / Cerea nell'anno
-  const tot = Array.from({ length: 13 }, (_, i) => i ? Object.values(m[i] || {}).reduce((a, b) => a + b, 0) : 0);
-  const righe = [['Giorno', ...MESI_LUNGHI]]; for (let g = 1; g <= 31; g++) righe.push([g, ...Array.from({ length: 12 }, (_, i) => (m[i + 1] || {})[g] ?? '')]);
+  const tot = Array.from({ length: 13 }, (_, i) => i ? Object.values(src[i] || {}).reduce((a, b) => a + b, 0) : 0);
+  const righe = [['Giorno', ...MESI_LUNGHI]]; for (let g = 1; g <= 31; g++) righe.push([g, ...Array.from({ length: 12 }, (_, i) => (src[i + 1] || {})[g] ?? '')]);
   righe.push(['TOTALE', ...tot.slice(1)]);
-  const tab = `<table class="sheet tab-ro" style="width:auto"><thead><tr>${righe[0].map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${righe.slice(1, -1).map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'r' : 'c'}" ${i ? '' : 'style="background:var(--head);font-weight:600"'}>${v === '' ? '' : fmtKg0(v)}</td>`).join('')}</tr>`).join('')}</tbody><tfoot><tr>${righe[righe.length - 1].map((v, i) => `<td class="${i ? '' : 'lbl'}">${i ? fmtKg0(v) : v}</td>`).join('')}</tr></tfoot></table>`;
-  $('tot-corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="a-prev">◀</button><b>${ANNO_TOT}</b><button id="a-next">▶</button></span><span class="fb"><button class="btn ghost sm" id="t-stampa">Stampa / PDF</button><button class="btn ghost sm" id="t-xlsx">Esporta Excel</button></span><span class="info">Forme lavate per giorno (lavaggi + ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}) · totale anno <b>${fmtKg0(tot.reduce((a, b) => a + b, 0))}</b> · di cui <b>${fmtKg0(altreAnno)}</b> forme per ${S.prod === 'PR' ? 'Carpi' : 'Cerea'}</span></div><div class="sheet-wrap">${tab}</div>`;
+  const tab = `<table class="sheet tab-ro" id="tot-tab" style="width:auto"><thead><tr>${righe[0].map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${righe.slice(1, -1).map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'r' : 'c'}" ${i ? `data-v="${v}"` : 'style="background:var(--head);font-weight:600"'}>${v === '' ? '' : fmtKg0(v)}</td>`).join('')}</tr>`).join('')}</tbody><tfoot><tr>${righe[righe.length - 1].map((v, i) => `<td class="${i ? '' : 'lbl'}">${i ? fmtKg0(v) : v}</td>`).join('')}</tr></tfoot></table>`;
+  $('tot-corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="a-prev">◀</button><b>${ANNO_TOT}</b><button id="a-next">▶</button></span><span class="mesenav"><button id="v-tutte" class="${solo ? '' : 'on'}">Tutte le forme</button><button id="v-altre" class="${solo ? 'on' : ''}">Solo ${altroNome}</button></span><span class="fb"><button class="btn ghost sm" id="t-stampa">Stampa / PDF</button><button class="btn ghost sm" id="t-xlsx">Esporta Excel</button></span><span class="info">${solo ? `Forme lavate per ${altroNome} per giorno` : `Forme lavate per giorno (lavaggi + ${altroNome})`} · totale anno <b>${fmtKg0(tot.reduce((a, b) => a + b, 0))}</b>${solo ? '' : ` · di cui ${altroNome} <b>${fmtKg0(altreAnno)}</b>`} · trascina sulle celle per la somma</span></div><div class="sheet-wrap" style="max-width:100%">${tab}</div>`;
   $('a-prev').onclick = () => { ANNO_TOT--; pgTotaleLavaggi(); }; $('a-next').onclick = () => { ANNO_TOT++; pgTotaleLavaggi(); };
-  $('t-stampa').onclick = () => stampaHTML(`Totale lavaggi ${PRODOTTI[S.prod]} ${ANNO_TOT}`, 'Forme lavate per giorno', tab.replace('class="sheet tab-ro" style="width:auto"', ''), 'landscape');
-  $('t-xlsx').onclick = () => scarica(xlsxSemplice([{ nome: 'Totale lavaggi', righe: righe.map((r, ri) => ri ? r.map((v, i) => i && v !== '' ? +v : v) : r), grassetto: [0, righe.length - 1], larghezze: [10, ...Array(12).fill(12)] }]), `TotaleLavaggi_${S.prod}_${ANNO_TOT}.xlsx`);
+  $('v-tutte').onclick = () => { VISTA_TOT = 'tutte'; pgTotaleLavaggi(); }; $('v-altre').onclick = () => { VISTA_TOT = 'altre'; pgTotaleLavaggi(); };
+  const tit = solo ? `Forme lavate per ${altroNome} ${PRODOTTI[S.prod]} ${ANNO_TOT}` : `Totale lavaggi ${PRODOTTI[S.prod]} ${ANNO_TOT}`;
+  $('t-stampa').onclick = () => stampaHTML(tit, 'Forme lavate per giorno', tab.replace('class="sheet tab-ro" id="tot-tab" style="width:auto"', ''), 'landscape');
+  $('t-xlsx').onclick = () => scarica(xlsxSemplice([{ nome: solo ? 'Solo ' + altroNome : 'Totale lavaggi', righe: righe.map((r, ri) => ri ? r.map((v, i) => i && v !== '' ? +v : v) : r), grassetto: [0, righe.length - 1], larghezze: [10, ...Array(12).fill(12)] }]), `${solo ? 'Forme_' + altroNome : 'TotaleLavaggi'}_${S.prod}_${ANNO_TOT}.xlsx`);
+  selezioneSommaTabella($('tot-tab'));
+}
+// selezione con il mouse in stile Excel: trascina sulle celle con numero (data-v) e compare la somma
+function selezioneSommaTabella(tab) {
+  if (!tab) return; let drag = null, a = null, b = null;
+  const cella = el => el && el.closest && el.closest('td[data-v]');
+  const disegna = () => {
+    tab.querySelectorAll('td.sel').forEach(t => t.classList.remove('sel')); if (!a || !b) return;
+    const cell = (r, c) => tab.tBodies[0].rows[r] && tab.tBodies[0].rows[r].cells[c];
+    const r1 = Math.min(a[0], b[0]), r2 = Math.max(a[0], b[0]), c1 = Math.min(a[1], b[1]), c2 = Math.max(a[1], b[1]); let n = 0, nn = 0, somma = 0, ultimo = null;
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const td = cell(r, c); if (!td) continue; td.classList.add('sel'); ultimo = td; n++; const v = td.dataset.v; if (v !== '' && v != null && !isNaN(v)) { somma += +v; nn++; } }
+    if (ultimo) mostraSomma(ultimo, n, nn, somma);
+  };
+  const pos = td => [td.parentElement.sectionRowIndex, td.cellIndex];
+  tab.addEventListener('mousedown', e => { const td = e.target.closest('td'); tab.querySelectorAll('td.sel').forEach(t => t.classList.remove('sel')); nascondiSomma(); a = b = null; drag = td && td.dataset.v != null ? pos(td) : null; if (drag) { a = b = drag; disegna(); e.preventDefault(); } });
+  tab.addEventListener('mouseover', e => { if (!drag || !(e.buttons & 1)) return; const td = cella(e.target); if (td) { b = pos(td); disegna(); } });
+  document.addEventListener('mouseup', () => { drag = null; });
+  document.addEventListener('mousedown', e => { if (!tab.contains(e.target)) { tab.querySelectorAll('td.sel').forEach(t => t.classList.remove('sel')); nascondiSomma(); } });
 }
 
 // ---------- Codici articolo ----------
