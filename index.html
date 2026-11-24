@@ -1306,8 +1306,8 @@ function eventiFoglio(box) {
     if (r && r.fx && r.fx[k]) inp.value = r.fx[k];                         // mostra la somma scritta
     else { const c = colsGiorno(CUR.tipo).find(x => x.k === k); if (c && (c.t === 'kg' || c.t === 'ov' || c.t === 'kgf') && inp.value) inp.value = inp.value.replace(/\./g, ''); }
     inp.dataset.orig = inp.value;
-    if (r && r.fx && r.fx[k]) setTimeout(() => inp.setSelectionRange(inp.value.length, inp.value.length), 0);      // cella con somma: cursore in fondo, si può aggiungere +N
-    else setTimeout(() => inp.select(), 0);
+    if (r && r.fx && r.fx[k]) setTimeout(() => { if (document.activeElement === inp) inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);      // cella con somma: cursore in fondo, si può aggiungere +N
+    else setTimeout(() => { if (document.activeElement === inp) inp.select(); }, 0);      // solo se la cella è ancora quella attiva: select() sposta il focus e con tasti veloci riportava il cursore indietro
     chiudiSelezioneFoglio();
     mostraFxPop(inp, !!(r && r.fx && r.fx[k]));
   });
