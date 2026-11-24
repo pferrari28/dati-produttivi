@@ -776,7 +776,7 @@ function Tabella(cont, opt) {
   const nextEdCol = (ci, dir) => dir > 0 ? colsEd().find(x => x > ci) : [...colsEd()].reverse().find(x => x < ci);
   function apriModificaCella(td) {                  // scrittura nella cella: Invio/freccia giù = riga sotto, Tab/freccia destra = cella a destra, Esc annulla
     const ri = +td.dataset.r, ci = +td.dataset.c, row = T.vis[ri], c = cols[ci]; if (!row || !c) return;
-    const inp = document.createElement('input'); inp.value = row[c.k] == null ? '' : row[c.k];
+    const inp = document.createElement('input'); inp.value = row[c.k] == null ? '' : (c.t === 'd' ? isoToIt(row[c.k]) : row[c.k]);
     inp.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;padding:2px 4px;border:1px solid var(--link);background:#fff;';
     td.innerHTML = ''; td.appendChild(inp); inp.focus(); inp.select();
     let chiuso = false;
@@ -1543,7 +1543,24 @@ let TAB_ELENCO = null;
 // ---- modifiche dall'elenco del mese ----
 const ELENCO = { tipo: null, mk: null, mappa: new Map(), mod: new Set() };
 function aggiornaBarraElenco() { const b = $('el-bar'); if (b) b.style.display = ELENCO.mod.size ? '' : 'none'; }
+async function spostaRigaElenco(tipo, row, raw) {                       // cambia la data di una riga: la sposta nella giornata indicata (anche di un altro mese)
+  const nuova = parseData(raw, +row._d.slice(0, 4));
+  if (!nuova) { toast('Data non valida (esempio: 23/11/2026 oppure 2311)', true); TAB_ELENCO.disegna(); return; }
+  if (nuova === row._d) { TAB_ELENCO.disegna(); return; }
+  const gOrig = ELENCO.mappa.get(row._d), r = gOrig && gOrig.dati[row._i]; if (!r) { TAB_ELENCO.disegna(); return; }
+  try {
+    if (!ELENCO.mappa.has(nuova)) {
+      const m = await DB.mese(TIPI[tipo].tab, S.prod, meseKey(nuova)), g = m.get(nuova);
+      ELENCO.mappa.set(nuova, g ? { ...g, dati: g.dati.map(x => ({ ...x })) } : { dati: [], altre: 0 });
+    }
+    gOrig.dati.splice(row._i, 1); ELENCO.mappa.get(nuova).dati.push(r);
+    ELENCO.mod.add(row._d); ELENCO.mod.add(nuova);
+    TAB_ELENCO.aggiorna(righeElenco(tipo, ELENCO.mappa)); aggiornaBarraElenco();
+    toast(`Riga spostata al ${isoToIt(nuova)}: premi Salva per confermare`);
+  } catch (e) { toast('Spostamento non riuscito: ' + (e.message || e), true); TAB_ELENCO.disegna(); }
+}
 function editaElenco(tipo, row, k, raw) {
+  if (k === 'data') { spostaRigaElenco(tipo, row, raw); return; }
   const g = ELENCO.mappa.get(row._d), r = g && g.dati[row._i], c = colsGiorno(tipo).find(x => x.k === k);
   if (r && c) {
     const n = norm(c.t, raw, r, k);
@@ -1581,7 +1598,7 @@ async function pgElenco(tipo, mantieni) {
   ELENCO.tipo = tipo; ELENCO.mk = mk; ELENCO.mappa = new Map([...mappa].map(([d, g]) => [d, { ...g, dati: g.dati.map(r => ({ ...r })) }]));   // copia di lavoro: le modifiche non toccano la cache finché non si salva
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, ELENCO.mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows, fit: tipo === 'lavorazioni', colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['lotto', 'matr', 'mese', 'anno', 'forme', 'fmt', 'polpa', 'linea'] : ['lotto', 'matr', 'mese', 'anno', 'forme', 'sporco'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
+  TAB_ELENCO = Tabella(box, { cols, rows, fit: tipo === 'lavorazioni', colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['lotto', 'matr', 'mese', 'anno', 'forme', 'fmt', 'polpa', 'linea'] : ['data', 'lotto', 'matr', 'mese', 'anno', 'forme', 'sporco'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
   aggiornaBarraElenco();
   $('el-canc').onclick = () => { Object.keys(TAB_ELENCO.filtri).forEach(k => delete TAB_ELENCO.filtri[k]); TAB_ELENCO.disegna(); };
   $('el-salva-b').onclick = salvaElenco;
