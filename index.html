@@ -1218,6 +1218,7 @@ function segnaModifica() { CUR.dirty = true; aggiornaStato(); }
 function aggiornaStato() {
   setTimeout(tintaCodici, 0);
   const s = $('g-stato'); if (!s) return;
+  const an = $('g-annulla'); if (an) an.style.display = CUR.dirty ? '' : 'none';
   if (CUR.dirty) { s.className = 'stato mod'; s.textContent = 'Modifiche non salvate'; }
   else if (CUR.esiste) { s.className = 'stato ok'; s.textContent = 'Salvata'; }
   else { s.className = 'stato new'; s.textContent = 'Nuova'; }
@@ -1661,6 +1662,7 @@ async function pgGiorno(tipo) {
         <span class="spacer"></span>
         <button class="btn ghost sm" id="g-stampa">Stampa / PDF</button><button class="btn ghost sm" id="g-xlsx">Esporta Excel</button>
         <button class="btn ghost sm" id="g-elimina">Elimina giornata</button>
+        <button class="btn ghost" id="g-annulla" style="display:none" title="Scarta le modifiche e torna ai dati dell'ultimo salvataggio">Annulla modifiche</button>
         <button class="btn amber" id="g-salva">Salva giornata</button></div>
       <div id="foglio"></div>`;
     eventiFoglio($('foglio'));
@@ -1673,6 +1675,12 @@ async function pgGiorno(tipo) {
     $('g-data').onchange = e => { if (e.target.value) vaiGiorno(tipo, e.target.value); };
     const shift = n => { if (!CUR.data) return; const d = new Date(CUR.data + 'T12:00:00'); d.setDate(d.getDate() + n); vaiGiorno(tipo, d.toISOString().slice(0, 10)); };
     $('g-prev').onclick = () => shift(-1); $('g-next').onclick = () => shift(1);
+    $('g-annulla').onclick = () => {
+      if (!CUR.data || !CUR.dirty) return;
+      apriModal(`<h2>Annullare le modifiche?</h2><p>La giornata del ${isoToIt(CUR.data)} torna com'era all'ultimo salvataggio${CUR.esiste ? '' : ' (nuova, quindi resta vuota)'}.</p><div class="modal-btns"><button class="btn ghost" id="an-no">No, continua a modificare</button><button class="btn danger" id="an-si">Sì, annulla le modifiche</button></div>`);
+      $('an-no').onclick = chiudiModal;
+      $('an-si').onclick = async () => { chiudiModal(); CUR.dirty = false; const d = CUR.data, t = CUR.tipo; await apriGiorno(t, d); toast('Modifiche annullate'); };
+    };
     $('g-salva').onclick = () => CUR.data ? salvaGiornata() : toast('Scrivi prima la data', true);
     if ($('g-altre')) { $('g-altre').onchange = e => { const n = parseNum(e.target.value); CUR.altre = n && !isNaN(n) ? Math.round(n) : 0; e.target.value = CUR.altre || ''; segnaModifica(); }; }
     $('g-elimina').onclick = async () => {
