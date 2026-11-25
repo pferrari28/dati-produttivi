@@ -1403,7 +1403,7 @@ function eventiFoglio(box) {
   box.addEventListener('mousedown', e => {
     const td = e.target.closest('td[data-i]'); if (!td) { chiudiSelezioneFoglio(); return; }
     SELF.drag = { a: [+td.dataset.i, +td.dataset.c], moved: false };
-    if (SELF.attiva && !e.shiftKey) { chiudiSelezioneFoglio(); const inp0 = td.querySelector('input'); if (inp0) setTimeout(() => inp0.focus(), 0); }   // un clic su una cella con la selezione attiva toglie la selezione ed entra nella cella
+    if (SELF.attiva && !e.shiftKey) chiudiSelezioneFoglio();
   });
 }
 const SELF = { drag: null, attiva: false, a: null, b: null };
@@ -1725,76 +1725,6 @@ async function pgPeriodo(tipo) {
     if (x === 'stampa') stampaTabella(T, `${TIPI[tipo].nome} ${PRODOTTI[S.prod]}`, sub, 'landscape'); else esportaTabella(T, `${TIPI[tipo].nome}_${S.prod}_${i.da}_${i.a}`, TIPI[tipo].nome); };
   await carica();
 }
-
-// ---- selezione di più celle con Maiusc (clic o frecce) + copia e incolla su più righe, in stile Excel ----
-SELF.anc = null;
-document.addEventListener('focusin', e => { const td = e.target.closest && e.target.closest('#foglio-t td[data-i]'); if (td) SELF.anc = [+td.dataset.i, +td.dataset.c]; });
-const rigaVisFoglio = i => { const t = document.querySelector(`#foglio-t td[data-i="${i}"]`); return !!t && t.parentElement.style.display !== 'none'; };
-const cellaFoglio = (i, c) => document.querySelector(`#foglio-t td[data-i="${i}"][data-c="${c}"]`);
-function selezionaFoglio(a, b) {
-  SELF.a = a; SELF.b = b;
-  if (!SELF.attiva) { SELF.attiva = true; $('foglio-t').classList.add('selmode'); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); getSelection().removeAllRanges(); }
-  disegnaSelFoglio();
-}
-function rettFoglio() { if (!SELF.attiva || !SELF.a || !SELF.b) return null; const a = SELF.a, b = SELF.b; return { r1: Math.min(a[0], b[0]), r2: Math.max(a[0], b[0]), c1: Math.min(a[1], b[1]), c2: Math.max(a[1], b[1]) }; }
-const righeVisRange = (r1, r2) => { const o = []; for (let i = r1; i <= r2; i++) if (rigaVisFoglio(i)) o.push(i); return o; };
-function valCellaFoglio(td) {
-  const i = +td.dataset.i, k = td.dataset.f, r = CUR.righe[i], inp = td.querySelector('input');
-  if (inp) { if (r && k && r.fx && r.fx[k]) return String(r[k] ?? ''); return inp.value; }
-  return td.textContent.trim();
-}
-// Maiusc + clic: seleziona dal punto di partenza alla cella cliccata
-document.addEventListener('mousedown', e => {
-  if (!e.shiftKey || e.button) return; const td = e.target.closest && e.target.closest('#foglio-t td[data-i]'); if (!td) return;
-  const base = SELF.attiva ? SELF.a : SELF.anc; if (!base) return;
-  e.preventDefault(); e.stopPropagation(); selezionaFoglio(base, [+td.dataset.i, +td.dataset.c]);
-}, true);
-// Maiusc + frecce: allarga la selezione; Esc la toglie
-document.addEventListener('keydown', e => {
-  if (!CUR.tipo || !$('foglio-t')) return;
-  const t = e.target, dentro = t.closest && t.closest('#foglio-t'), libero = !t.closest || !t.closest('input,textarea,select,[contenteditable]');
-  if (SELF.attiva && e.key === 'Escape' && (dentro || libero)) { chiudiSelezioneFoglio(); return; }
-  if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || !/^Arrow(Up|Down|Left|Right)$/.test(e.key)) return;
-  if (!(SELF.attiva ? (dentro || libero) : (dentro && t.tagName === 'INPUT'))) return;
-  if (!SELF.attiva && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {                  // a cursore dentro il testo Maiusc+←→ seleziona il testo, come sempre
-    const sx = t.selectionStart, ex = t.selectionEnd; if (e.key === 'ArrowLeft' ? !(sx === 0 && ex === 0) : sx !== t.value.length) return;
-  }
-  const base = SELF.attiva ? SELF.a : SELF.anc, cur = SELF.attiva ? SELF.b : SELF.anc; if (!base || !cur) return;
-  let [ri, ci] = cur;
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { const d = e.key === 'ArrowUp' ? -1 : 1; let n = ri + d; while (n >= 0 && n < CUR.righe.length && !rigaVisFoglio(n)) n += d; if (n >= 0 && n < CUR.righe.length) ri = n; }
-  else { const n = ci + (e.key === 'ArrowLeft' ? -1 : 1); if (cellaFoglio(ri, n)) ci = n; }
-  e.preventDefault(); e.stopPropagation(); selezionaFoglio(base, [ri, ci]);
-}, true);
-// Ctrl+C con celle selezionate: copia il blocco (testo separato da tabulazioni, incollabile anche in Excel)
-document.addEventListener('copy', e => {
-  const R = rettFoglio(); if (!R || !CUR.tipo) return;
-  const righe = righeVisRange(R.r1, R.r2).map(i => { const o = []; for (let c = R.c1; c <= R.c2; c++) { const td = cellaFoglio(i, c); o.push(td ? valCellaFoglio(td) : ''); } return o.join('\t'); });
-  e.clipboardData.setData('text/plain', righe.join('\n')); e.preventDefault();
-});
-// Ctrl+V: incolla nelle celle selezionate (se la selezione è un multiplo del blocco copiato lo ripete su tutte le righe) o a partire dalla cella attiva verso il basso
-document.addEventListener('paste', e => {
-  if (!CUR.tipo || !$('foglio-t')) return;
-  const t = e.target, dentro = t.closest && t.closest('#foglio-t'), libero = !t.closest || !t.closest('input,textarea,select,[contenteditable]');
-  if (!(dentro || (SELF.attiva && libero))) return;
-  const txt = (e.clipboardData || window.clipboardData).getData('text'); if (!txt) return;
-  const blocco = txt.replace(/\r/g, '').replace(/\n+$/, '').split('\n').map(r => r.split('\t')), dh = blocco.length, dw = Math.max(...blocco.map(r => r.length));
-  const R = rettFoglio(); if (!R && dh === 1 && dw === 1) return;                         // un solo valore in una sola cella: incollo normalmente
-  const start = R ? [R.r1, R.c1] : SELF.anc; if (!start) return;
-  e.preventDefault();
-  let righeDest, nCol;
-  if (R) { const vis = righeVisRange(R.r1, R.r2), W = R.c2 - R.c1 + 1; righeDest = vis.length >= dh && vis.length % dh === 0 ? vis : null; nCol = W >= dw && W % dw === 0 ? W : dw; }
-  else nCol = dw;
-  if (!righeDest) { righeDest = []; let n = start[0]; while (righeDest.length < dh) { if (n >= CUR.righe.length) { CUR.righe.push(TIPI[CUR.tipo].vuota()); } if (n >= CUR.righe.length || rigaVisFoglio(n) || n >= CUR.righe.length - 0) righeDest.push(n); n++; if (n > CUR.righe.length + dh + 5) break; } }
-  const maxR = Math.max(...righeDest); while (CUR.righe.length <= maxR) CUR.righe.push(TIPI[CUR.tipo].vuota());
-  if (!cellaFoglio(maxR, start[1])) disegnaFoglio();                                       // righe nuove: ridisegna il foglio
-  const cols = colsGiorno(CUR.tipo); let n = 0;
-  righeDest.forEach((i, k) => { const dati = blocco[k % dh]; for (let j = 0; j < nCol; j++) {
-    const ci = start[1] + j, c = cols[ci], td = cellaFoglio(i, ci), inp = td && td.querySelector('input'); if (!c || !inp || c.t === 'kgf' || c.t === 'ov') continue;
-    const v = (dati[j % dw] ?? '').trim(); inp.value = v; delete inp.dataset.orig; commitCella(inp); n++;
-  } });
-  selezionaFoglio([righeDest[0], start[1]], [righeDest[righeDest.length - 1], start[1] + nCol - 1]);
-  toast(`Incollate ${n} celle`);
-});
 
 // ---- tasti «vai in fondo» (in alto a destra) e «torna in alto» (sotto la tabella, a destra) per le tabelle lunghe di lavaggi e lavorazioni ----
 (function () {
