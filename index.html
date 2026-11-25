@@ -1044,6 +1044,19 @@ function controlli(tipo, i) {
     if (!vuoto(r.mese) && reg.mese != null && +r.mese !== +reg.mese) E('mese', msg);
     if (!vuoto(r.anno) && reg.anno != null && +r.anno !== +reg.anno) E('anno', msg);
   }
+  if (!reg && completa && r.lotto && RE_LOTTO.test(r.lotto)) {                  // nessun Registro: confronto con le altre giornate (lavaggi per le lavorazioni, lavorazioni per i lavaggi)
+    const ma2 = x => x.mese && x.anno ? String(x.mese).padStart(2, '0') + '/' + x.anno : '—';
+    const altri = []; if (info && info.matr) altri.push({ dove: 'Lavaggi', x: info });
+    if (ALTRI.key === tipo + '|' + S.prod + '|' + CUR.data) (ALTRI.map.get(r.lotto) || []).forEach(x => altri.push({ dove: 'Lavorazioni del ' + isoToIt(x.data), x }));
+    for (const a of altri) {
+      if (comb(a.x) === comb(r)) continue;
+      const msg = `Diverso da ${a.dove} (${a.x.matr || '—'} ${ma2(a.x)})`;
+      if (!vuoto(r.matr) && a.x.matr && normMatr(r.matr).replace(/\s+/g, '') !== normMatr(a.x.matr).replace(/\s+/g, '')) E('matr', msg);
+      if (!vuoto(r.mese) && a.x.mese != null && +r.mese !== +a.x.mese) E('mese', msg);
+      if (!vuoto(r.anno) && a.x.anno != null && +r.anno !== +a.x.anno) E('anno', msg);
+      break;
+    }
+  }
   if (reg && reg.prodotto && S.prod === 'GP' && /parmig/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Parmigiano Reggiano');
   if (reg && reg.prodotto && S.prod === 'PR' && /grana/i.test(reg.prodotto)) W('lotto', 'Nel Registro lotti questo lotto è di Grana Padano');
   if (vuoto(r.forme) || num(r.forme) <= 0) E('forme', 'Numero forme mancante');
@@ -1210,11 +1223,19 @@ function aggiornaStato() {
   else { s.className = 'stato new'; s.textContent = 'Nuova'; }
 }
 
+// ---- confronto con le altre giornate (lavorazioni / lavaggi) del lotto: serve a colorare le celle in rosso già nel foglio ----
+const ALTRI = { key: '', map: new Map() };
+async function caricaAltri(lotti) {
+  const key = CUR.tipo + '|' + S.prod + '|' + CUR.data; if (ALTRI.key !== key) { ALTRI.key = key; ALTRI.map = new Map(); }
+  const nuovi = [...new Set(lotti.filter(l => RE_LOTTO.test(l) && !ALTRI.map.has(l)))]; if (!nuovi.length) return;
+  try { const r = await DB.lottiLavorazioni(S.prod, nuovi, CUR.tipo === 'lavorazioni' ? CUR.data : null); if (ALTRI.key !== key) return; nuovi.forEach(l => ALTRI.map.set(l, r.filter(x => x.lotto === l))); } catch (e) { /* senza rete: nessun confronto */ }
+}
+
 // ---- lotto: compilazione automatica di matricola, mese e anno ----
 async function compilaDaLotto(i, l) {
   if (!RE_LOTTO.test(l)) return;
   const tipo = CUR.tipo, data = CUR.data;
-  await caricaRegistro([l]); if (tipo === 'lavorazioni') await caricaInfo(S.prod, [l]);
+  await Promise.all([caricaRegistro([l]), tipo === 'lavorazioni' ? caricaInfo(S.prod, [l]) : null, caricaAltri([l])]);
   if (CUR.tipo !== tipo || CUR.data !== data) return;
   const r = CUR.righe[i]; if (!r || r.lotto !== l) { aggiornaTutteRighe(); return; }
   const reg = REG.get(l), inf = tipo === 'lavorazioni' ? infoLotto(S.prod, l) : null;
@@ -1416,12 +1437,12 @@ function chiudiSelezioneFoglio() {
 // ---- caricamento / salvataggio di una giornata ----
 async function apriGiorno(tipo, data) {
   if (CUR.data !== data || CUR.tipo !== tipo) FG = {};
-  CUR.tipo = tipo; CUR.data = data; DATA_SEL[tipo] = data; MESE_SEL[tipo] = meseKey(data);
+  CUR.tipo = tipo; CUR.data = data; DATA_SEL[tipo] = data; MESE_SEL[tipo] = meseKey(data); ALTRI.key = '';
   const mese = await DB.mese(TIPI[tipo].tab, S.prod, meseKey(data));
   const g = mese.get(data);
   CUR.righe = g ? JSON.parse(JSON.stringify(g.dati)) : []; CUR.altre = g ? g.altre : 0; CUR.esiste = !!g; CUR.dirty = false;
   const lotti = [...new Set(CUR.righe.map(r => r.lotto).filter(Boolean))];
-  await Promise.all([caricaRegistro(lotti), tipo === 'lavorazioni' ? caricaInfo(S.prod, lotti) : null]);
+  await Promise.all([caricaRegistro(lotti), tipo === 'lavorazioni' ? caricaInfo(S.prod, lotti) : null, caricaAltri(lotti)]);
   if (CUR.tipo !== tipo || CUR.data !== data) return;
   $('g-data-txt').value = isoToIt(data); $('g-dow').textContent = giornoSett(data);
   const at = $('g-altre'); if (at) at.value = CUR.altre || '';
