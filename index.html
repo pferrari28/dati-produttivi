@@ -1505,9 +1505,50 @@ function avvisoMedie(lista) {
   $('mm-ok').onclick = chiudiModal;
 }
 
+
+// ---- raggruppamento righe delle lavorazioni al salvataggio (dalle giornate del 26/11/2026 in poi) ----
+const DATA_RAGGR = '2026-11-26';
+function fasciaRaggr(r) {                                  // → {key} oppure {dubbio} oppure null (riga non raggruppabile)
+  if (!r.lotto || !r.linea) return null;
+  if (r.linea === TL) return { key: r.lotto + '|TL' };
+  const cl = r.linea === 'SV' ? 'SV' : (r.linea === 'FILMATO' || r.linea === 'PRETAGLIATO') ? 'FIL' : null;
+  if (!cl) return null;
+  const f = normFormato(r.fmt), g = grammi(f);
+  const fascia = g != null ? (g <= 500 ? 'A' : g <= 2000 ? 'B' : null) : FORMATI_FISSI.includes(f) ? 'B' : null;
+  return fascia ? { key: r.lotto + '|' + cl + '|' + fascia } : { dubbio: true };
+}
+function raggruppaLavorazioni(righe) {
+  const gruppi = new Map(), dubbi = [];
+  righe.forEach((r, i) => { const f = fasciaRaggr(r); if (!f) return; if (f.dubbio) dubbi.push(i); else (gruppi.get(f.key) || gruppi.set(f.key, []).get(f.key)).push(i); });
+  const comb = r => normMatr(r.matr) + '|' + (r.mese ?? '') + '|' + (r.anno ?? '');
+  const sparisce = new Set(), nuove = new Map(), dettagli = []; let unite = 0, inRighe = 0;
+  gruppi.forEach(ix => {
+    if (ix.filter(i => righe[i].n).length > 1) ix = ix.filter(i => !righe[i].n);       // due righe già salvate (numero riga già assegnato, magari già stampato in scheda consorzio) non si uniscono mai
+    if (ix.length < 2 || new Set(ix.map(i => comb(righe[i]))).size > 1) return;     // matricole diverse: errore già segnalato, non si unisce
+    const rr = ix.map(i => righe[i]);
+    const base = rr.reduce((a, b) => num(b.forme) > num(a.forme) ? b : a);
+    const m = { ...base, fx: undefined };
+    const somma = k => { const pz = rr.filter(x => !vuoto(x[k])); return { tot: Math.round(pz.reduce((a, x) => a + num(x[k]), 0) * 1000) / 1000, fx: pz.map(x => (x.fx && x.fx[k]) ? x.fx[k] : String(x[k]).replace('.', ',')).join('+'), n: pz.length }; };
+    const fo = somma('forme'), po = somma('polpa');
+    m.forme = fo.tot; m.fx = {}; if (fo.n > 1) m.fx.forme = fo.fx;
+    if (po.n) { m.polpa = po.tot; if (po.n > 1) m.fx.polpa = po.fx; } else delete m.polpa;
+    const ns = rr.map(x => x.n).filter(Boolean); if (ns.length) m.n = Math.min(...ns); else delete m.n;
+    const croste = rr.reduce((a, x) => a + (calcLavorazione(S.prod, CUR.data, x).croste || 0), 0);      // le croste restano quelle delle righe originali
+    if (Math.abs(croste - (calcLavorazione(S.prod, CUR.data, { ...m, croste: '' }).croste || 0)) > 0.005) m.croste = Math.round(croste * 100) / 100; else delete m.croste;
+    if (!Object.keys(m.fx).length) delete m.fx;
+    dettagli.push({ lotto: m.lotto, linea: m.linea, fmt: m.fmt, righe: ix.length, forme: m.forme, fx: m.fx && m.fx.forme, salvata: !!m.n }); nuove.set(ix[0], m); ix.slice(1).forEach(i => sparisce.add(i)); unite++; inRighe += ix.length;
+  });
+  const out = righe.map((r, i) => nuove.get(i) || r).filter((_, i) => !sparisce.has(i));
+  return { righe: out, unite, inRighe, dettagli, dubbi: dubbi.map(i => ({ i, r: righe[i] })) };
+}
+async function esisteGiornataDopo(prod, data) {
+  if (DEMO) return Object.keys(demoGet('dp_giornate') || {}).some(k => k.startsWith(prod + '|') && k.split('|')[1] > data);
+  const r = ok(await sb.from('dp_giornate').select('data').eq('prodotto', prod).gt('data', data).limit(1));
+  return !!(r.data && r.data.length);
+}
 async function salvaGiornata() {
   const tipo = CUR.tipo, data = CUR.data; if (!tipo || !data) return false;
-  const righe = CUR.righe.filter(r => !rigaVuota(r));
+  let righe = CUR.righe.filter(r => !rigaVuota(r)), msgUnite = '';
   const confl = await conflittiLotti();
   if (confl.length) {
     const forza = await new Promise(res => {
@@ -1517,6 +1558,29 @@ async function salvaGiornata() {
       $('cf-no').onclick = () => { chiudiModal(); res(false); }; $('cf-si').onclick = () => { chiudiModal(); res(true); };
     });
     if (!forza) return false;
+  }
+  if (tipo === 'lavorazioni' && data >= DATA_RAGGR) {
+    const riapertura = CUR.esiste && righe.some(r => !r.n);                         // giornata già salvata a cui si aggiungono righe
+    const dopo = riapertura && await esisteGiornataDopo(S.prod, data);               // con giornate successive già inserite non si unisce nulla (i numeri riga devono restare consecutivi)
+    if (!dopo && (!CUR.esiste || riapertura)) {
+      const R = raggruppaLavorazioni(righe);
+      let procedi = true;
+      if (R.dubbi.length) procedi = await new Promise(res => {
+        apriModal(`<h2>Formato non riconosciuto</h2><p>Queste righe non si possono raggruppare perché il formato non è riconosciuto (SV e Filmato: da 0 a 2000 g, 1KG, 2KG, 1/2, quarti, ottavi). Resteranno come sono.</p>
+          <ul class="errlist">${R.dubbi.map(d => `<li><b>${esc(d.r.lotto)}</b> · ${esc(d.r.linea)} · formato «${esc(d.r.fmt || 'vuoto')}» · riga ${d.i + 1}</li>`).join('')}</ul>
+          <div class="modal-btns"><button class="btn ghost" id="rg-no">Torna a correggere</button><button class="btn" id="rg-si">Procedi e raggruppa le altre</button></div>`);
+        $('rg-no').onclick = () => { chiudiModal(); res(false); }; $('rg-si').onclick = () => { chiudiModal(); res(true); };
+      });
+      if (!procedi) return false;
+      let unisci = R.unite > 0;
+      if (unisci && riapertura) unisci = await new Promise(res => {                    // giornata già salvata: si chiede conferma
+        apriModal(`<h2>Unire le righe?</h2><p>Questa giornata era già salvata e non ci sono giornate successive. Le righe nuove si possono unire a quelle dello stesso lotto, linea e formato:</p>
+          <ul class="errlist">${R.dettagli.map(d => `<li><b>${esc(d.lotto)}</b> · ${esc(d.linea)} · ${esc(d.fmt)} · ${d.righe} righe → <b>${fmtKg0(d.forme)}</b> forme${d.fx ? ` (${esc(d.fx)})` : ''}${d.salvata ? ' · si aggiunge a una riga già salvata' : ''}</li>`).join('')}</ul>
+          <div class="modal-btns"><button class="btn ghost" id="un-no">Salva senza unire</button><button class="btn" id="un-si">Unisci e salva</button></div>`);
+        $('un-no').onclick = () => { chiudiModal(); res(false); }; $('un-si').onclick = () => { chiudiModal(); res(true); };
+      });
+      if (unisci) { righe = R.righe; msgUnite = ` · Unite ${R.inRighe} righe in ${R.unite}`; }
+    }
   }
   try {
     if (tipo === 'lavorazioni') {                                                  // numero di riga progressivo
@@ -1529,7 +1593,7 @@ async function salvaGiornata() {
     CUR.righe = righe; CUR.dirty = false; CUR.esiste = pulite.length > 0 || num(CUR.altre) > 0;
     if (tipo === 'lavaggi') INFO[S.prod].clear();                                 // le medie dei lotti possono essere cambiate
     let e = 0, w = 0; CUR.righe.forEach((_, i) => Object.values(controlli(tipo, i)).forEach(m => m.lv === 'e' ? e++ : m.lv === 'w' ? w++ : 0));
-    toast(`Giornata del ${isoToIt(data)} salvata${e || w ? ` · ${e} errori, ${w} avvisi` : ''}`);
+    toast(`Giornata del ${isoToIt(data)} salvata${msgUnite}${e || w ? ` · ${e} errori, ${w} avvisi` : ''}`);
     disegnaFoglio(); aggiornaStato();
     if (tipo === 'lavaggi') avvisoMedie(mediaFuoriRange(CUR.righe, data));
     return true;
