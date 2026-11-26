@@ -986,7 +986,7 @@ function colsGiorno(tipo) {
 const calcRiga = (tipo, r, data) => tipo === 'lavaggi' ? calcLavaggio(S.prod, r) : calcLavorazione(S.prod, data, r);
 
 // tipologia nei lavaggi: una lettera compila il testo completo
-const TIPOLOGIE = () => S.prod === 'GP' ? { M: 'MEZZANO', R: 'RETINATO', B: 'GRAN BON' } : { M: 'MEZZANO', R: 'RETINATO', B: 'BIOLOGICO', S: 'SBIANCATO' };
+const TIPOLOGIE = () => S.prod === 'GP' ? { M: 'MEZZANO', R: 'RETINATO', B: 'GRAN BON', S: 'SBIANCATO' } : { M: 'MEZZANO', R: 'RETINATO', B: 'BIOLOGICO', S: 'SBIANCATO' };
 
 // ---- valore mostrato nelle celle ----
 function mostra(t, v, r, k) {
