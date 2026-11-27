@@ -1780,7 +1780,9 @@ window.addEventListener('beforeunload', e => { if (CUR.dirty || ELENCO.mod.size)
 // ---- ricerca tra due date (es. dal 10/10/2026 al 10/11/2026) ----
 async function pgPeriodo(tipo) {
   const id = 'per_' + tipo, box = $('corpo');
+  if (!INTERVALLO[id]) { const y = isoOggi().slice(0, 4); INTERVALLO[id] = { da: y + '-01-01', a: y + '-12-31' }; }       // all'apertura propone tutto l'anno in corso
   box.innerHTML = barraIntervallo(id, VUOTO_INT) + '<div id="per-corpo"></div>';
+  $(id + '-mese').insertAdjacentHTML('beforebegin', `<button class="btn ghost sm" id="${id}-anno">Tutto l'anno</button>`);
   let T = null;
   const carica = async () => {
     if (!leggiIntervallo(id)) { $('per-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 101026 e 101126) oppure scegli «Mese corrente».</div>'; T = null; return; }
@@ -1789,6 +1791,7 @@ async function pgPeriodo(tipo) {
     const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
     T = Tabella($('per-corpo'), { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, sepMese: 'giorno' });
   };
+  $(id + '-anno').onclick = () => { const y = isoOggi().slice(0, 4); INTERVALLO[id] = { da: y + '-01-01', a: y + '-12-31' }; pgPeriodo(tipo); };
   $(id + '-mese').onclick = () => { INTERVALLO[id] = meseCorrenteInt(); pgPeriodo(tipo); };
   $(id + '-azz').onclick = () => { INTERVALLO[id] = { da: '', a: '' }; pgPeriodo(tipo); };
   $(id + '-oggi').onclick = () => { INTERVALLO[id] = { da: isoOggi(), a: isoOggi() }; pgPeriodo(tipo); };
