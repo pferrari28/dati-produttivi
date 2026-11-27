@@ -1680,17 +1680,12 @@ async function salvaElenco() {
 
 async function pgElenco(tipo, mantieni) {
   const sc0 = (() => { const w = document.querySelector('#elenco-corpo .sheet-wrap'); return w ? [w.scrollTop, w.scrollLeft] : null; })();
-  let mk = MESE_SEL[tipo], mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk);
-  if (PRIMO[tipo]) {                                                  // prima apertura: se il mese corrente è vuoto, va all'ultimo mese con dati (max 3 indietro)
-    PRIMO[tipo] = false;
-    for (let n = 0; n < 3 && mappa.size === 0; n++) { MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); mk = MESE_SEL[tipo]; mappa = await DB.mese(TIPI[tipo].tab, S.prod, mk); }
-    if ($('m-lab')) $('m-lab').textContent = meseLabel(mk);
-  }
+  const mk = MESE_SEL[tipo].slice(0, 4), mappa = await mesiIntervallo(TIPI[tipo].tab, mk + '-01-01', mk + '-12-31');       // elenco dell'anno: l'anno è in mk
   if (tipo === 'lavorazioni') await caricaInfo(S.prod, [...new Set([...mappa.values()].flatMap(g => g.dati.map(r => r.lotto)).filter(Boolean))]);
   ELENCO.tipo = tipo; ELENCO.mk = mk; ELENCO.mappa = new Map([...mappa].map(([d, g]) => [d, { ...g, dati: g.dati.map(r => ({ ...r })) }]));   // copia di lavoro: le modifiche non toccano la cache finché non si salva
   const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, ELENCO.mappa);
   const box = $('elenco-corpo'); if (!box) return;
-  TAB_ELENCO = Tabella(box, { cols, rows, fit: tipo === 'lavorazioni', colData: tipo === 'lavorazioni' ? S.prod : null, onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['lotto', 'matr', 'mese', 'anno', 'forme', 'fmt', 'polpa', 'linea'] : ['data', 'lotto', 'matr', 'mese', 'anno', 'forme', 'sporco'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
+  TAB_ELENCO = Tabella(box, { cols, rows, fit: tipo === 'lavorazioni', colData: tipo === 'lavorazioni' ? S.prod : null, sepMese: 'mese', onChange: T => { const b = $('el-canc'); if (b) b.style.display = Object.keys(T.filtri).length ? '' : 'none'; }, editable: tipo === 'lavorazioni' ? ['lotto', 'matr', 'mese', 'anno', 'forme', 'fmt', 'polpa', 'linea'] : ['data', 'lotto', 'matr', 'mese', 'anno', 'forme', 'sporco'], onEdit: (row, k, raw) => editaElenco(tipo, row, k, raw) });
   aggiornaBarraElenco();
   $('el-canc').onclick = () => { Object.keys(TAB_ELENCO.filtri).forEach(k => delete TAB_ELENCO.filtri[k]); TAB_ELENCO.disegna(); };
   $('el-salva-b').onclick = salvaElenco;
@@ -1699,8 +1694,8 @@ async function pgElenco(tipo, mantieni) {
   if (mantieni && sc0 && wrap) { wrap.scrollTop = sc0[0]; wrap.scrollLeft = sc0[1]; }
   else if (wrap) wrap.scrollTop = wrap.scrollHeight;       // si apre già in fondo, sulle ultime righe
   $('elenco-x').onclick = e => {
-    const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${meseLabel(mk)}`;
-    if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco del mese', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
+    const x = e.target.dataset.x; if (!x) return; const tit = `${TIPI[tipo].nome} ${PRODOTTI[S.prod]} ${mk}`;
+    if (x === 'stampa') stampaTabella(TAB_ELENCO, tit, 'Elenco dell\'anno', 'landscape'); else esportaTabella(TAB_ELENCO, `${TIPI[tipo].nome}_${S.prod}_${mk}`, TIPI[tipo].nome);
   };
 }
 
@@ -1709,7 +1704,7 @@ async function pgGiorno(tipo) {
   FG = {};
   const main = $('main'), vista = V[tipo];
   main.innerHTML = `<div class="page-title"><h2>${TIPI[tipo].nome} · ${PRODOTTI[S.prod]}</h2></div>
-    <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco del mese</button><button data-v="periodo" class="${vista === 'periodo' ? 'on' : ''}">Ricerca tra date</button></div>
+    <div class="subtabs"><button data-v="giorno" class="${vista === 'giorno' ? 'on' : ''}">Giornata</button><button data-v="elenco" class="${vista === 'elenco' ? 'on' : ''}">Elenco dell'anno</button><button data-v="periodo" class="${vista === 'periodo' ? 'on' : ''}">Ricerca tra date</button></div>
     <div id="corpo"></div>`;
   main.querySelector('.subtabs').onclick = async e => { const v = e.target.dataset.v; if (!v || v === vista) return; if (ELENCO.mod.size && vista === 'elenco') return toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true); if (CUR.dirty && vista === 'giorno') { const r = await chiediSalvataggio(); if (r === 'annulla') return; } V[tipo] = v; pgGiorno(tipo); };
   if (vista === 'giorno') {
@@ -1761,10 +1756,10 @@ async function pgGiorno(tipo) {
     await pgPeriodo(tipo);
   } else {
     $('corpo').innerHTML = `<div class="toolbar"><span class="mesenav"><button id="m-prev">◀</button><b id="m-lab"></b><button id="m-next">▶</button></span><button class="btn amber" id="nuova-g">+ Registra nuova giornata</button>${barraExport('elenco-x')}<button class="btn ghost sm" id="el-canc" style="display:none" title="Togli tutti i filtri dell'elenco">Cancella filtro</button><span id="el-bar" style="display:none"><button class="btn amber sm" id="el-salva-b">Salva modifiche</button> <button class="btn ghost sm" id="el-annulla-b">Annulla</button></span><span class="info" id="elenco-info"></span></div><div id="elenco-corpo"></div>`;
-    const agg = () => { $('m-lab').textContent = meseLabel(MESE_SEL[tipo]); pgElenco(tipo); };
+    const agg = () => { $('m-lab').textContent = MESE_SEL[tipo].slice(0, 4); pgElenco(tipo); };
     const blocca = () => { if (ELENCO.mod.size) { toast('Ci sono modifiche non salvate nell\'elenco: salvale o annullale', true); return true; } return false; };
-    $('m-prev').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -1); agg(); };
-    $('m-next').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 1); agg(); };
+    $('m-prev').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], -12); agg(); };
+    $('m-next').onclick = () => { if (blocca()) return; MESE_SEL[tipo] = meseAdd(MESE_SEL[tipo], 12); agg(); };
     $('nuova-g').onclick = () => {
       apriModal(`<h2>Registra nuova giornata</h2><p>Scrivi la data (per esempio 191126 oppure 19/11/2026).</p><input id="ng-data" style="font:inherit;font-size:1.1rem;padding:8px 10px;width:100%;border:1px solid var(--line);border-radius:6px" inputmode="numeric" placeholder="gg/mm/aaaa" autocomplete="off"><div class="modal-btns"><button class="btn ghost" data-close>Annulla</button><button class="btn ghost" id="ng-oggi">Oggi</button><button class="btn" id="ng-ok">Apri</button></div>`);
       const apri = d => { chiudiModal(); V[tipo] = 'giorno'; DATA_SEL[tipo] = d; pgGiorno(tipo); };
@@ -1780,9 +1775,7 @@ window.addEventListener('beforeunload', e => { if (CUR.dirty || ELENCO.mod.size)
 // ---- ricerca tra due date (es. dal 10/10/2026 al 10/11/2026) ----
 async function pgPeriodo(tipo) {
   const id = 'per_' + tipo, box = $('corpo');
-  if (!INTERVALLO[id]) { const y = isoOggi().slice(0, 4); INTERVALLO[id] = { da: y + '-01-01', a: y + '-12-31' }; }       // all'apertura propone tutto l'anno in corso
   box.innerHTML = barraIntervallo(id, VUOTO_INT) + '<div id="per-corpo"></div>';
-  $(id + '-mese').insertAdjacentHTML('beforebegin', `<button class="btn ghost sm" id="${id}-anno">Tutto l'anno</button>`);
   let T = null;
   const carica = async () => {
     if (!leggiIntervallo(id)) { $('per-corpo').innerHTML = '<div class="empty">Scrivi le date (per esempio 101026 e 101126) oppure scegli «Mese corrente».</div>'; T = null; return; }
@@ -1791,7 +1784,6 @@ async function pgPeriodo(tipo) {
     const cols = tipoColonna(colsElenco(tipo)), rows = righeElenco(tipo, mappa);
     T = Tabella($('per-corpo'), { cols, rows, colData: tipo === 'lavorazioni' ? S.prod : null, sepMese: 'giorno' });
   };
-  $(id + '-anno').onclick = () => { const y = isoOggi().slice(0, 4); INTERVALLO[id] = { da: y + '-01-01', a: y + '-12-31' }; pgPeriodo(tipo); };
   $(id + '-mese').onclick = () => { INTERVALLO[id] = meseCorrenteInt(); pgPeriodo(tipo); };
   $(id + '-azz').onclick = () => { INTERVALLO[id] = { da: '', a: '' }; pgPeriodo(tipo); };
   $(id + '-oggi').onclick = () => { INTERVALLO[id] = { da: isoOggi(), a: isoOggi() }; pgPeriodo(tipo); };
